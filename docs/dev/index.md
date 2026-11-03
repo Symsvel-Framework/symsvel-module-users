@@ -1,3 +1,3 @@
-# SymsvelModuleUsers
+# Users
 
 Documentation développeur.

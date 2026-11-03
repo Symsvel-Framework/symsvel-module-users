@@ -1,6 +1,6 @@
 {
-    "name": "symsvel-framework/module-symsvel-module-users",
-    "description": "SymSvel module SymsvelModuleUsers",
+    "name": "symsvel-framework/module-users",
+    "description": "SymSvel module Users",
     "type": "symfony-bundle",
     "license": "proprietary",
     "require": {
@@ -9,12 +9,12 @@
     },
     "autoload": {
         "psr-4": {
-            "SymSvel\\Module\\SymsvelModuleUsers\\": "back/src/"
+            "SymSvel\\Module\\Users\\": "back/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "SymSvel\\Module\\SymsvelModuleUsers\\Tests\\": "back/tests/"
+            "SymSvel\\Module\\Users\\Tests\\": "back/tests/"
         }
     },
     "require-dev": {

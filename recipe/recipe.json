@@ -1,9 +1,9 @@
 {
     "manifests": {
-        "symsvel-framework/module-symsvel-module-users": {
+        "symsvel-framework/module-users": {
             "manifest": {
                 "bundles": {
-                    "SymSvel\\Module\\SymsvelModuleUsers\\SymsvelModuleUsersBundle": [
+                    "SymSvel\\Module\\Users\\UsersBundle": [
                         "all"
                     ]
                 },
@@ -12,12 +12,12 @@
                 }
             },
             "files": {
-                "config/routes/symsvel-module-users.yaml": {
+                "config/routes/users.yaml": {
                     "contents": [
-                        "symsvel-module-users:",
+                        "users:",
                         "    resource:",
-                        "        path: '@SymsvelModuleUsersBundle/src/Controller/'",
-                        "        namespace: SymSvel\\Module\\SymsvelModuleUsers\\Controller",
+                        "        path: '@UsersBundle/src/Controller/'",
+                        "        namespace: SymSvel\\Module\\Users\\Controller",
                         "    type: attribute",
                         ""
                     ],

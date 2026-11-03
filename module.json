@@ -1,6 +1,6 @@
 {
     "schema": 1,
-    "name": "SymsvelModuleUsers",
+    "name": "Users",
     "dependencies": {},
     "tables": [],
     "components": {
