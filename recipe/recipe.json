@@ -1,0 +1,30 @@
+{
+    "manifests": {
+        "symsvel-framework/module-symsvel-module-users": {
+            "manifest": {
+                "bundles": {
+                    "SymSvel\\Module\\SymsvelModuleUsers\\SymsvelModuleUsersBundle": [
+                        "all"
+                    ]
+                },
+                "copy-from-recipe": {
+                    "config/": "%CONFIG_DIR%/"
+                }
+            },
+            "files": {
+                "config/routes/symsvel-module-users.yaml": {
+                    "contents": [
+                        "symsvel-module-users:",
+                        "    resource:",
+                        "        path: '@SymsvelModuleUsersBundle/src/Controller/'",
+                        "        namespace: SymSvel\\Module\\SymsvelModuleUsers\\Controller",
+                        "    type: attribute",
+                        ""
+                    ],
+                    "executable": false
+                }
+            },
+            "ref": "REPLACE_WITH_RECIPE_COMMIT_SHA"
+        }
+    }
+}
