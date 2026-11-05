@@ -2,7 +2,9 @@
     "schema": 1,
     "name": "Users",
     "dependencies": {},
-    "tables": [],
+    "tables": [
+        "symsvel_users"
+    ],
     "components": {
         "back": "back"
     },
