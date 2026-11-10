@@ -6,7 +6,10 @@
         "symsvel_users"
     ],
     "components": {
-        "back": "back"
+        "back": "back",
+        "bo": "bo",
+        "app": "app",
+        "front": "front"
     },
     "documentation": {
         "dev": "docs/dev"
