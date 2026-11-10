@@ -16,8 +16,8 @@ final class UsersPingControllerTest extends TestCase
         self::assertSame(['module' => 'users', 'status' => 'ok'], json_decode($controller()->getContent(), true, 512, JSON_THROW_ON_ERROR));
         $routes = (new \ReflectionMethod(UsersPingController::class, '__invoke'))->getAttributes(Route::class);
         self::assertCount(1, $routes);
-        $route = $routes[0]->newInstance();
-        self::assertSame('/api/users/ping', $route->getPath());
-        self::assertSame(['GET'], $route->getMethods());
+        $arguments = $routes[0]->getArguments();
+        self::assertSame('/api/users/ping', $arguments[0] ?? $arguments['path'] ?? null);
+        self::assertSame(['GET'], $arguments['methods'] ?? null);
     }
 }
