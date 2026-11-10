@@ -7,9 +7,17 @@ namespace SymSvel\Module\Users;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+use SymSvel\Module\Users\Controller\UsersPingController;
 
 final class UsersBundle extends AbstractBundle
 {
+    public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
+    {
+        $builder->register(UsersPingController::class, UsersPingController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
+    }
+
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $container->extension('doctrine', [
