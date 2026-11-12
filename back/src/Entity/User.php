@@ -8,6 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'symsvel_users')]
+#[ORM\UniqueConstraint(name: 'uniq_symsvel_users_email', columns: ['email'])]
 class User
 {
     #[ORM\Id]
@@ -17,7 +18,7 @@ class User
 
     #[ORM\Column(length: 254)] private string $email;
     #[ORM\Column(name: 'password_hash', length: 255)] private string $passwordHash;
-    #[ORM\Column] private bool $enabled = true;
+    #[ORM\Column(options: ['default' => true])] private bool $enabled = true;
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')] private \DateTimeImmutable $createdAt;
 
     public function __construct(string $email, string $passwordHash)
