@@ -6,15 +6,21 @@ namespace SymSvel\Module\Users\Auth;
 
 use Doctrine\ORM\EntityManagerInterface;
 use SymSvel\Module\Auth\Identity\PasswordPrincipal;
+use SymSvel\Module\Auth\Identity\ContextOwnedIdentity;
 use SymSvel\Module\Auth\Identity\PrincipalStatus;
 use SymSvel\Module\Auth\Token\TokenSubject;
 use SymSvel\Module\Users\Entity\User;
 
 /** App-only identity adapter; the Users module is not required by BO-only installs. */
-final readonly class UserIdentityProvider implements PasswordPrincipal, PrincipalStatus
+final readonly class UserIdentityProvider implements PasswordPrincipal, PrincipalStatus, ContextOwnedIdentity
 {
     public function __construct(private EntityManagerInterface $entityManager)
     {
+    }
+
+    public function authContext(): string
+    {
+        return 'app';
     }
 
     public function authenticate(string $context, string $identifier, string $password): ?TokenSubject
