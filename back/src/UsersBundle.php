@@ -17,7 +17,8 @@ final class UsersBundle extends AbstractBundle
         $builder->register(UsersPingController::class, UsersPingController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
-        $builder->register(UserIdentityProvider::class, UserIdentityProvider::class)->setAutowired(true);
+        $builder->register(UserIdentityProvider::class, UserIdentityProvider::class)
+            ->setAutowired(true)->addTag('symsvel.auth.identity_provider');
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
