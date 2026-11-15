@@ -9,6 +9,7 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Users\Controller\UsersPingController;
 use SymSvel\Module\Users\Auth\UserIdentityProvider;
+use SymSvel\Module\Users\Auth\UserPasswordResetIdentity;
 
 final class UsersBundle extends AbstractBundle
 {
@@ -19,6 +20,8 @@ final class UsersBundle extends AbstractBundle
             ->addTag('controller.service_arguments');
         $builder->register(UserIdentityProvider::class, UserIdentityProvider::class)
             ->setAutowired(true)->addTag('symsvel.auth.identity_provider');
+        $builder->register(UserPasswordResetIdentity::class, UserPasswordResetIdentity::class)
+            ->setAutowired(true)->addTag('symsvel.auth.password_reset_identity');
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
