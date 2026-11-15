@@ -9,7 +9,25 @@ jobs:
         run: |
           php -v
           php -r 'if (PHP_VERSION_ID < 80400 || PHP_VERSION_ID >= 80500) { exit(1); }'
-      - run: composer install --no-interaction --prefer-dist
+      - name: Install private Composer dependencies
+        env:
+          SYMSVEL_READ_TOKEN: ${{ secrets.SYMSVEL_READ_TOKEN }}
+        run: |
+          if [ -z "$SYMSVEL_READ_TOKEN" ]; then
+            echo "::error::SYMSVEL_READ_TOKEN is missing. A read-only token for private SymSvel repositories is required."
+            exit 1
+          fi
+          for repository in symsvel-module-auth symsvel-module-mails symsvel-module-settings; do
+            if ! curl --fail --silent --show-error --output /dev/null \
+                --header "Authorization: Bearer $SYMSVEL_READ_TOKEN" \
+                --header "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/Symsvel-Framework/$repository"; then
+              echo "::error::SYMSVEL_READ_TOKEN cannot read private repository $repository (check expiry and permissions)."
+              exit 1
+            fi
+          done
+          export COMPOSER_AUTH="$(php -r 'echo json_encode(["github-oauth" => ["github.com" => getenv("SYMSVEL_READ_TOKEN")]], JSON_THROW_ON_ERROR);')"
+          composer install --no-interaction --prefer-dist --no-progress
       - name: Verify Auth development contract
         run: |
           composer show symsvel-framework/module-auth
