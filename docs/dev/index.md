@@ -79,3 +79,9 @@ L'envoi de mail, les endpoints et les crash-tests multi-SGBD restent à dévelop
 Le test `UserPasswordResetIdentityRecoveryEmailTest` crée désormais sa table `symsvel_users` dans SQLite en mémoire avant la lecture DBAL du fournisseur. Le test de migration utilise `Table::getPrimaryKey()` au lieu de la méthode inexistante `hasPrimaryKey()`. `composer.json` déclare explicitement `doctrine/migrations:^3.9`, indispensable pour charger les migrations du module (`AbstractMigration`) lors des tests. Cette dépendance ne change pas le modèle d'authentification.
 
 Les tests restent isolés de toute base de projet et ne présupposent plus une table absente. Aucune migration publiée ni logique métier de vérification n'a été modifiée dans cette passe. CI et crash-tests locaux à confirmer.
+
+## Adresse App éligible à la demande de confirmation (15/11/2026)
+
+`UserPasswordResetIdentity` expose désormais `EmailVerificationIdentity::pendingVerificationEmail()` pour un utilisateur `app` actif, avec `email_verified_at IS NULL`. Le service interne Auth dispose ainsi de l'adresse réellement enregistrée, sans jamais faire confiance à une adresse fournie par le navigateur. Les comptes déjà vérifiés et les contextes BO sont rejetés. Tests de l'éligibilité avant/après confirmation et de l'isolation des contextes ajoutés.
+
+Users reste facultatif en installation BO seule, sans route App supplémentaire. CI et crash-tests de cette passe à confirmer.
