@@ -73,3 +73,9 @@ Tests : `EmailVerificationMigrationTest` vérifie les mutations `Schema` et leur
 Auth consomme le jeton dans la même transaction que cette mise à jour. Aucun compte User n'est confirmé par défaut et le module n'est pas exigé pour une installation BO seule. `UserEmailVerificationTest` vérifie contexte, empreinte, succès unique, désactivation et changement d'adresse.
 
 L'envoi de mail, les endpoints et les crash-tests multi-SGBD restent à développer ; CI à confirmer.
+
+## Correctif CI des tests de confirmation (15/11/2026)
+
+Le test `UserPasswordResetIdentityRecoveryEmailTest` crée désormais sa table `symsvel_users` dans SQLite en mémoire avant la lecture DBAL du fournisseur. Le test de migration utilise `Table::getPrimaryKey()` au lieu de la méthode inexistante `hasPrimaryKey()`. `composer.json` déclare explicitement `doctrine/migrations:^3.9`, indispensable pour charger les migrations du module (`AbstractMigration`) lors des tests. Cette dépendance ne change pas le modèle d'authentification.
+
+Les tests restent isolés de toute base de projet et ne présupposent plus une table absente. Aucune migration publiée ni logique métier de vérification n'a été modifiée dans cette passe. CI et crash-tests locaux à confirmer.
