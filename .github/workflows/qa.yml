@@ -10,4 +10,8 @@ jobs:
           php -v
           php -r 'if (PHP_VERSION_ID < 80400 || PHP_VERSION_ID >= 80500) { exit(1); }'
       - run: composer install --no-interaction --prefer-dist
+      - name: Verify Auth development contract
+        run: |
+          composer show symsvel-framework/module-auth
+          php -r 'require "vendor/autoload.php"; if (!interface_exists("SymSvel\\Module\\Auth\\Identity\\PasswordResetIdentity")) { fwrite(STDERR, "Auth PasswordResetIdentity missing from installed dependency\\n"); exit(1); }'
       - run: composer qa
