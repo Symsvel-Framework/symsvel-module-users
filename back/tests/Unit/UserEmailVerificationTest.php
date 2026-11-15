@@ -29,10 +29,13 @@ final class UserEmailVerificationTest extends TestCase
         self::assertFalse($owner->confirmEmail(new TokenSubject('bo', 7), hash('sha256', 'owner@example.test'), $now));
         self::assertFalse($owner->confirmEmail($subject, hash('sha256', 'other@example.test'), $now));
         self::assertFalse($owner->confirmEmail($subject, 'invalid', $now));
+        self::assertSame('owner@example.test', $owner->pendingVerificationEmail($subject));
+        self::assertNull($owner->pendingVerificationEmail(new TokenSubject('bo', 7)));
         self::assertNull($owner->recoveryEmail($subject));
 
         self::assertTrue($owner->confirmEmail($subject, hash('sha256', 'owner@example.test'), $now));
         self::assertSame('owner@example.test', $owner->recoveryEmail($subject));
+        self::assertNull($owner->pendingVerificationEmail($subject));
         self::assertFalse($owner->confirmEmail($subject, hash('sha256', 'owner@example.test'), $now));
 
         $db->executeStatement('UPDATE symsvel_users SET enabled = 0, email_verified_at = NULL WHERE id = 7');
