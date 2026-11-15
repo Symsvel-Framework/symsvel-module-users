@@ -8,7 +8,9 @@
         "symfony/framework-bundle": "^8.1",
         "doctrine/orm": "^3.3",
         "doctrine/doctrine-bundle": "^3.0",
-        "symsvel-framework/module-auth": "dev-dev"
+        "symsvel-framework/module-auth": "dev-dev",
+        "symsvel-framework/module-mails": "dev-dev",
+        "symsvel-framework/module-settings": "dev-dev"
     },
     "autoload": {
         "psr-4": {
@@ -41,6 +43,14 @@
         {
             "type": "vcs",
             "url": "https://github.com/Symsvel-Framework/symsvel-module-auth.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-mails.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-settings.git"
         },
         {
             "type": "composer",
