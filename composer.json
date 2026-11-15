@@ -39,6 +39,10 @@
     },
     "repositories": [
         {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-auth.git"
+        },
+        {
             "type": "composer",
             "url": "https://packages.xavier-tezza.fr"
         }
