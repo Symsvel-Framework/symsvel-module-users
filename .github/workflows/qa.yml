@@ -13,5 +13,7 @@ jobs:
       - name: Verify Auth development contract
         run: |
           composer show symsvel-framework/module-auth
+          composer show symsvel-framework/module-mails
+          composer show symsvel-framework/module-settings
           php -r 'require "vendor/autoload.php"; if (!interface_exists("SymSvel\\Module\\Auth\\Identity\\PasswordResetIdentity")) { fwrite(STDERR, "Auth PasswordResetIdentity missing from installed dependency\\n"); exit(1); }'
       - run: composer qa
