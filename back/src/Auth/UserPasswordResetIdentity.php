@@ -40,13 +40,20 @@ final readonly class UserPasswordResetIdentity implements PasswordResetIdentity
         return $id === false ? null : new TokenSubject('app', (int) $id);
     }
 
-    /**
-     * No verified mailbox state exists yet in this module. Fail closed until
-     * the account owner can assert and persist mailbox verification.
-     */
+    /** Only active accounts with a confirmed mailbox can receive reset links. */
     public function recoveryEmail(TokenSubject $subject): ?string
     {
-        return null;
+        if ($subject->context !== 'app') {
+            return null;
+        }
+
+        $email = $this->connection->fetchOne(
+            'SELECT email FROM symsvel_users WHERE id = ? AND enabled = ? AND email_verified_at IS NOT NULL',
+            [$subject->id, true],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+        );
+
+        return is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : null;
     }
 
     public function replacePassword(TokenSubject $subject, string $newPasswordHash): bool
