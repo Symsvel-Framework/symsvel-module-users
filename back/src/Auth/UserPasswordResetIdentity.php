@@ -57,6 +57,22 @@ final readonly class UserPasswordResetIdentity implements PasswordResetIdentity,
         return is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : null;
     }
 
+    /** An active account may only confirm its own as-yet-unverified mailbox. */
+    public function pendingVerificationEmail(TokenSubject $subject): ?string
+    {
+        if ($subject->context !== 'app') {
+            return null;
+        }
+
+        $email = $this->connection->fetchOne(
+            'SELECT email FROM symsvel_users WHERE id = ? AND enabled = ? AND email_verified_at IS NULL',
+            [$subject->id, true],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+        );
+
+        return is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : null;
+    }
+
     /**
      * The mailbox fingerprint is matched against the account's current email.
      * No unverified account is implicitly confirmed during bootstrap.
