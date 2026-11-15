@@ -17,10 +17,14 @@ final class UserPasswordResetIdentityRecoveryEmailTest extends TestCase
             self::markTestSkipped('pdo_sqlite is required.');
         }
 
-        $provider = new UserPasswordResetIdentity(DriverManager::getConnection([
+        $db = DriverManager::getConnection([
             'driver' => 'pdo_sqlite',
             'memory' => true,
-        ]));
+        ]);
+        $db->executeStatement(
+            'CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY, email VARCHAR(254) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL)',
+        );
+        $provider = new UserPasswordResetIdentity($db);
 
         self::assertSame('app', $provider->authContext());
         self::assertNull($provider->recoveryEmail(new TokenSubject('app', 1)));
