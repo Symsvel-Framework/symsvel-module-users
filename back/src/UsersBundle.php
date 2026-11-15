@@ -21,7 +21,8 @@ final class UsersBundle extends AbstractBundle
         $builder->register(UserIdentityProvider::class, UserIdentityProvider::class)
             ->setAutowired(true)->addTag('symsvel.auth.identity_provider');
         $builder->register(UserPasswordResetIdentity::class, UserPasswordResetIdentity::class)
-            ->setAutowired(true)->addTag('symsvel.auth.password_reset_identity');
+            ->setAutowired(true)->addTag('symsvel.auth.password_reset_identity')
+            ->addTag('symsvel.auth.email_verification_identity');
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
