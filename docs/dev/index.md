@@ -29,3 +29,7 @@ Composer référence `symsvel-framework/module-auth:dev-dev` via le catalogue Sa
 ## Composition des identités par contexte (14/11/2026)
 
 `UserIdentityProvider` déclare désormais `ContextOwnedIdentity::authContext()` = `app` et est enregistré sous le tag `symsvel.auth.identity_provider`. Sa présence est facultative pour Auth et n'est pas requise dans les installations BO seules. CI de cette passe à confirmer.
+
+## Récupération de mot de passe App (15/11/2026)
+
+`UserPasswordResetIdentity` implémente `PasswordResetIdentity` du module Auth pour le seul contexte `app`. Il retrouve un utilisateur actif par email et remplace son empreinte de mot de passe uniquement si elle est Argon2id. L'accès DBAL utilise la connexion partagée pour permettre une transaction globale entre consommation du jeton, changement du mot de passe et révocation des sessions. Le service est enregistré sous `symsvel.auth.password_reset_identity`, sans dépendance d'Auth envers Users. Les endpoints, l'orchestration transactionnelle et les tests d'intégration complets restent à réaliser. CI de cette passe à confirmer.
