@@ -10,7 +10,8 @@
         "doctrine/doctrine-bundle": "^3.0",
         "symsvel-framework/module-auth": "dev-dev",
         "symsvel-framework/module-mails": "dev-dev",
-        "symsvel-framework/module-settings": "dev-dev"
+        "symsvel-framework/module-settings": "dev-dev",
+        "doctrine/migrations": "^3.9"
     },
     "autoload": {
         "psr-4": {
