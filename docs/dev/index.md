@@ -53,3 +53,15 @@ Après résolution d'Auth depuis sa branche `dev`, Composer a rejeté `symsvel-f
 Le `composer.json` du module déclare désormais explicitement, à la racine, `module-auth`, `module-mails` et `module-settings` en `dev-dev` et pointe en priorité sur leurs dépôts Git `dev`, avant le catalogue Satis. Cela autorise uniquement ces dépendances de développement, sans abaisser globalement `minimum-stability`. Le workflow CI affiche les trois versions installées et vérifie toujours la présence de `PasswordResetIdentity`.
 
 **Portée temporaire du canal dev :** ces contraintes explicites sont à remplacer par des versions publiées cohérentes lorsque les trois modules seront stabilisés. Pas de modification du runtime ou du contrat métier. CI de cette correction à confirmer.
+
+## Vérification persistante des e-mails (15/11/2026)
+
+**Décision validée :** l'adresse doit avoir été confirmée avant qu'un lien de récupération du mot de passe puisse y être envoyé, y compris pour le premier administrateur créé pendant le Setup. Le propriétaire de la donnée reste le module Users ; Auth reste responsable des jetons, Mails de l'envoi.
+
+La migration additive `Migration/Version20261115000002.php` ajoute `email_verified_at` (`datetime_immutable`, nullable) à la table du module. La migration initiale publiée n'est pas réécrite. L'entité `User` expose `getEmailVerifiedAt()` et initialise implicitement la nouvelle propriété à `null`. Les comptes existants, ainsi que les nouveaux comptes créés par le Setup ou les constructeurs, restent donc **non vérifiés** tant qu'aucun parcours de confirmation sécurisé n'a persisté une date. Aucun compte n'est vérifié automatiquement à la migration.
+
+`UserPasswordResetIdentity::recoveryEmail()` consulte la connexion DBAL partagée et retourne l'adresse uniquement si le contexte vaut `app`, le compte est actif (`enabled`) **et** `email_verified_at IS NOT NULL`. Sinon, il retourne `null` sans envoi. La recherche du sujet et le remplacement transactionnel du mot de passe ne changent pas.
+
+Tests : `EmailVerificationMigrationTest` vérifie les mutations `Schema` et leur annulation sans toucher aux colonnes préexistantes ; `UserPasswordResetIdentityVerifiedMailboxTest` couvre le refus sans vérification, l'isolation du contexte, le passage à un état vérifié simulé en base puis le refus du compte désactivé.
+
+**Limites du chantier :** la confirmation d'adresse par jeton à usage unique, la persistance sécurisée de la confirmation et la gestion d'un changement d'adresse ne sont **pas encore développées**. Aucun endpoint de demande de récupération n'est ouvert. La CI des nouveaux commits et les crash-tests locaux de la compilation/exécution multi-SGBD restent à confirmer. Ne jamais renseigner `email_verified_at` à partir d'une simple saisie d'adresse ou d'une authentification locale.
