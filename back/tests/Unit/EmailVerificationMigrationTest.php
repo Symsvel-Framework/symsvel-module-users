@@ -24,7 +24,7 @@ final class EmailVerificationMigrationTest extends TestCase
         self::assertTrue($table->hasColumn('email_verified_at'));
         self::assertFalse($table->getColumn('email_verified_at')->getNotnull());
         self::assertTrue($table->hasColumn('email'));
-        self::assertTrue($table->hasPrimaryKey());
+        self::assertNotNull($table->getPrimaryKey());
 
         $migration->down($schema);
         self::assertFalse($table->hasColumn('email_verified_at'));
