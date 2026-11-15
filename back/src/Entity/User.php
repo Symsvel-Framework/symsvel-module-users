@@ -21,6 +21,9 @@ class User
     #[ORM\Column(options: ['default' => true])] private bool $enabled = true;
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')] private \DateTimeImmutable $createdAt;
 
+    #[ORM\Column(name: 'email_verified_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $emailVerifiedAt = null;
+
     public function __construct(string $email, string $passwordHash)
     {
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254) { throw new \InvalidArgumentException('Invalid user email.'); }
@@ -32,6 +35,7 @@ class User
 
     public function getId(): ?int { return $this->id; }
     public function getEmail(): string { return $this->email; }
+    public function getEmailVerifiedAt(): ?\DateTimeImmutable { return $this->emailVerifiedAt; }
     public function getPasswordHash(): string { return $this->passwordHash; }
     public function isEnabled(): bool { return $this->enabled; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
