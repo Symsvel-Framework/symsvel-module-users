@@ -85,3 +85,9 @@ Les tests restent isolés de toute base de projet et ne présupposent plus une t
 `UserPasswordResetIdentity` expose désormais `EmailVerificationIdentity::pendingVerificationEmail()` pour un utilisateur `app` actif, avec `email_verified_at IS NULL`. Le service interne Auth dispose ainsi de l'adresse réellement enregistrée, sans jamais faire confiance à une adresse fournie par le navigateur. Les comptes déjà vérifiés et les contextes BO sont rejetés. Tests de l'éligibilité avant/après confirmation et de l'isolation des contextes ajoutés.
 
 Users reste facultatif en installation BO seule, sans route App supplémentaire. CI et crash-tests de cette passe à confirmer.
+
+## Diagnostic des accès GitHub privés dans les CI (15/11/2026)
+
+Le workflow `qa.yml` fournit explicitement le secret GitHub Actions `SYMSVEL_READ_TOKEN` à Composer via `COMPOSER_AUTH` (`github-oauth`). Avant installation, il refuse un secret absent et contrôle en lecture, par l'API GitHub, l'accès aux dépôts privés `symsvel-module-auth`, `symsvel-module-mails` et `symsvel-module-settings`. En cas d'absence, d'expiration ou de permissions insuffisantes, la CI échoue avec un diagnostic explicite **avant** `composer install` plutôt qu'un message générique de Composer. La valeur du jeton n'est jamais affichée. Les runners auto-hébergés ne doivent pas dépendre d'une authentification Composer laissée dans leur cache local.
+
+**Configuration à maintenir :** secret `SYMSVEL_READ_TOKEN` lisible dans chacun des trois dépôts GitHub Actions (ou via une configuration de secrets autorisée), avec droits de lecture sur les dépôts privés requis. Un `GITHUB_TOKEN` standard limité au dépôt du workflow ne suffit pas pour ces dépendances inter-dépôts. Un jeton révoqué ou expiré doit être remplacé dans les secrets GitHub, pas en dur dans `composer.json` ou les logs. CI de ce correctif à confirmer ; aucune modification du runtime.
