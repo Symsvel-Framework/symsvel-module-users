@@ -105,7 +105,6 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             $settings, new SettingRepository($registry), $settingsEm,
             new SettingSecretCipher('integration-secret-for-users'),
         );
-        $settingManager->set('auth.app_verify_email_url', 'https://app.example.test/verify-email');
         $settingManager->set('auth.app_reset_url', 'https://app.example.test/reset-password');
         $settingManager->set('mails.sender_email', 'sender@example.test');
         $settingManager->flush();
@@ -136,8 +135,13 @@ final class AppRegistrationVerificationFlowTest extends TestCase
         );
         $owner = new UserPasswordResetIdentity($db);
         $limiter = new PasswordResetLimiter($db, 'integration-secret-for-limits');
+        $workspace = sys_get_temp_dir().'/symsvel-users-auth-domain-'.bin2hex(random_bytes(8));
+        mkdir($workspace.'/.symsvel', 0700, true);
+        mkdir($workspace.'/backend', 0700);
+        $projectMetadata = $workspace.'/.symsvel/project.json';
+        file_put_contents($projectMetadata, '{"schema":1,"local_domain":"example.test"}');
         $dispatch = new EmailVerificationDispatch(
-            $limiter, new EmailVerificationUrlResolver($settingManager),
+            $limiter, new EmailVerificationUrlResolver($settingManager, $workspace.'/backend'),
             new ContextPasswordResetIdentity([$owner]),
             new ContextEmailVerificationIdentity([$owner]), new DbalEmailVerificationStore($db),
             $renderer, new ConfiguredMailSender(new MailSender($mailer), $settingManager),
@@ -267,6 +271,10 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             $settingsEm->close();
             $db->close();
             $settingsDb->close();
+            @unlink($projectMetadata);
+            rmdir($workspace.'/backend');
+            rmdir($workspace.'/.symsvel');
+            rmdir($workspace);
         }
     }
 
