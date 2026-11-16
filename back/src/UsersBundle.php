@@ -8,6 +8,9 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Users\Controller\UsersPingController;
+use Symfony\Component\DependencyInjection\Reference;
+use SymSvel\Module\Users\Controller\UserRegistrationController;
+use SymSvel\Module\Users\Service\UserRegistration;
 use SymSvel\Module\Users\Auth\UserIdentityProvider;
 use SymSvel\Module\Users\Auth\UserPasswordResetIdentity;
 
@@ -20,6 +23,12 @@ final class UsersBundle extends AbstractBundle
             ->addTag('controller.service_arguments');
         $builder->register(UserIdentityProvider::class, UserIdentityProvider::class)
             ->setAutowired(true)->addTag('symsvel.auth.identity_provider');
+        $builder->register(UserRegistration::class, UserRegistration::class)
+            ->setAutowired(true)
+            ->setArgument('$connection', new Reference('doctrine.dbal.default_connection'));
+        $builder->register(UserRegistrationController::class, UserRegistrationController::class)
+            ->setAutowired(true)
+            ->addTag('controller.service_arguments');
         $builder->register(UserPasswordResetIdentity::class, UserPasswordResetIdentity::class)
             ->setAutowired(true)->addTag('symsvel.auth.password_reset_identity')
             ->addTag('symsvel.auth.email_verification_identity');

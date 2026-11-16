@@ -38,6 +38,13 @@ final class UserIdentityProviderDatabaseTest extends TestCase
             $provider = new UserIdentityProvider($em);
             self::assertNull($provider->authenticate('bo', 'user@example.test', 'correct-password'));
             self::assertNull($provider->authenticate('app', 'user@example.test', 'wrong-password'));
+            self::assertNull($provider->authenticate('app', 'user@example.test', 'correct-password'));
+            self::assertFalse($provider->isActive(new TokenSubject('app', $id)));
+            $connection->executeStatement(
+                'UPDATE symsvel_users SET email_verified_at = ? WHERE id = ?',
+                ['2026-11-16 10:00:00', $id],
+            );
+            $em->clear();
             self::assertEquals(new TokenSubject('app', $id), $provider->authenticate('app', 'user@example.test', 'correct-password'));
             self::assertTrue($provider->isActive(new TokenSubject('app', $id)));
             self::assertFalse($provider->isActive(new TokenSubject('bo', $id)));

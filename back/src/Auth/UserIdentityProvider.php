@@ -30,7 +30,7 @@ final readonly class UserIdentityProvider implements PasswordPrincipal, Principa
         }
 
         $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $identifier]);
-        if (!$user instanceof User || !$user->isEnabled() || !password_verify($password, $user->getPasswordHash())) {
+        if (!$user instanceof User || !$user->isEnabled() || $user->getEmailVerifiedAt() === null || !password_verify($password, $user->getPasswordHash())) {
             return null;
         }
 
@@ -47,6 +47,6 @@ final readonly class UserIdentityProvider implements PasswordPrincipal, Principa
 
         $user = $this->entityManager->find(User::class, $subject->id);
 
-        return $user instanceof User && $user->isEnabled();
+        return $user instanceof User && $user->isEnabled() && $user->getEmailVerifiedAt() !== null;
     }
 }

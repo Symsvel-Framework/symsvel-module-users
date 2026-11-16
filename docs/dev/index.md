@@ -95,3 +95,13 @@ Le workflow `qa.yml` fournit explicitement le secret GitHub Actions `SYMSVEL_REA
 ## Décision de vérification e-mail App (16/11/2026)
 
 La confirmation de l'adresse reste **obligatoire** pour les comptes Users/App. Un changement d'adresse rend la nouvelle adresse non vérifiée jusqu'à confirmation. La dispense consentie au développeur lors du Setup local ne concerne que l'unique administrateur initial `ROLE_DEV` du BO et **ne s'applique jamais aux Users**. Les protections de récupération de mot de passe fondées sur `email_verified_at` demeurent actives. Cette règle est validée ; la validation opérationnelle des parcours App demeure distincte des CI unitaires.
+
+## Inscription et activation obligatoirement vérifiée (16/11/2026)
+
+`POST /apiopen/users/register` (Users) reçoit une adresse, un mot de passe et une langue FR/EN, sans session. `UserRegistration` gère la création en DBAL sur `symsvel_users` avec e-mail normalisé, mot de passe Argon2id (12 à 1024 octets), `email_verified_at = NULL` et `enabled = true`. Il consomme avant écriture le quota de `PasswordResetLimiter::allowRegistration` fourni par Auth ; les doublons et requêtes limitées ne modifient jamais les comptes existants. L'API retourne uniformément `202 {status:accepted}` pour toute entrée valide, sans révéler l'existence du compte.
+
+Si un compte vient d'être créé, `UserRegistrationController` déclenche `EmailVerificationDispatch` d'Auth pour émettre le jeton à usage unique et envoyer le mail via Mails à l'adresse **enregistrée** ; un échec de transport après insertion laisse un compte en attente. Le parcours existant de renvoi `POST /apiopen/auth/email-verification/request` permet de récupérer la situation sans remettre à zéro le mot de passe. La confirmation se fait par `POST /apiopen/auth/email-verification/complete`, qui consomme le jeton et persiste la confirmation dans une transaction DBAL commune.
+
+`UserIdentityProvider` refuse désormais **l'authentification ainsi que la validité des sessions** tant que `email_verified_at` est nul. Cette règle s'applique aussi aux comptes existants non vérifiés : aucune connexion par simple possession de mot de passe. Le contexte BO est toujours rejeté. Tests : insertion/normalisation/Argon2id/doublons/limiteur SQLite, requêtes invalides, et contrôle réel de la connexion avant et après confirmation.
+
+Les écrans App et la configuration HTTPS de `auth.app_verify_email_url` seront validés dans les passes correspondantes. Aucun compte App n'est vérifié lors de l'inscription ni du Setup BO. Les CT finaux restent nécessaires ; mail SMTP, CORS et migrations multi-SGBD n'ont pas encore été crash-testés sur une installation.
