@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SymSvel\Module\Users\Controller;
 
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -15,6 +16,7 @@ final readonly class UserRegistrationController
     public function __construct(
         private UserRegistration $users,
         private EmailVerificationDispatch $verification,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -48,11 +50,15 @@ final readonly class UserRegistrationController
         }
 
         if ($created) {
-            // Auth owns verification and e-mail delivery. This may fail after
-            // persistence; the existing public resend endpoint allows recovery.
-            $this->verification->dispatch(
-                'app', $email, $data['locale'] ?? 'fr', (string) $request->getClientIp(), $now,
-            );
+            // Auth owns verification and e-mail delivery. The newly created
+            // account must not be observable through an SMTP/configuration error.
+            try {
+                $this->verification->dispatch(
+                    'app', $email, $data['locale'] ?? 'fr', (string) $request->getClientIp(), $now,
+                );
+            } catch (\Exception $exception) {
+                $this->logger->error('App signup confirmation dispatch failed.', ['exception' => $exception]);
+            }
         }
 
         // Never reveal duplicate, pending or throttled addresses.

@@ -127,3 +127,10 @@ La CI Users ajoute un job indépendant qui assemble son écran dans le dépôt `
 ### Tests Playwright du formulaire d'inscription (16/11/2026)
 
 Le test `app/tests/registration.e2e.ts` est copié dans l'App assemblée par le job CI Users. Chromium vérifie que le formulaire `/register` envoie une requête `/apiopen/users/register` sans Authorization, présente un accusé de réception uniforme et bloque localement les mots de passe discordants avant tout appel réseau. Le serveur est simulé dans ces deux scénarios ; le test de bout en bout PHP SQLite reste la preuve de l'intégration serveur, et les CT HTTP réels restent nécessaires.
+
+
+### Confidentialité des réponses publiques lorsque SMTP échoue (16/11/2026)
+
+Après insertion d'un compte, un échec du transport Mails ou de sa configuration ne doit **jamais** transformer `POST /apiopen/users/register` en réponse HTTP 500 propre aux seuls comptes nouvellement créés. Le contrôleur renvoie la même réponse `202 {"status":"accepted"}` que pour les doublons et quotas atteints ; il consigne l'exception dans les logs serveur, sans adresse dans le message applicatif. Le compte créé reste `email_verified_at = NULL` et ne peut pas se connecter ; il peut demander un nouveau lien via Auth après expiration du quota anti-abus.
+
+Le test DBAL/ORM intégré `AppRegistrationVerificationFlowTest` simule une panne SMTP et vérifie la réponse uniforme sur les trois demandes publiques App : inscription Users, renvoi de confirmation Auth, et récupération du mot de passe Auth. Il assure également que l'inscription reste persistée mais non vérifiée. Cette vérification automatisée ne remplace pas les crash-tests SMTP, HTTP et multi-SGBD en projet assemblé. Les requêtes de confirmation restent distinctes de la réalisation du changement d'adresse e-mail, qui n'est pas encore implémenté.

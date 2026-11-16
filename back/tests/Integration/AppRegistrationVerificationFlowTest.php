@@ -10,6 +10,7 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mailer\MailerInterface;
@@ -17,6 +18,7 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\RawMessage;
 use SymSvel\Module\Auth\Controller\AppAuthenticationController;
 use SymSvel\Module\Auth\Controller\AppEmailVerificationController;
+use SymSvel\Module\Auth\Controller\AppPasswordResetController;
 use SymSvel\Module\Auth\Identity\AuthenticatedTokenResolver;
 use SymSvel\Module\Auth\Identity\ContextEmailVerificationIdentity;
 use SymSvel\Module\Auth\Identity\ContextIdentityProvider;
@@ -25,15 +27,20 @@ use SymSvel\Module\Auth\Identity\EmailVerificationCompletion;
 use SymSvel\Module\Auth\Identity\EmailVerificationDispatch;
 use SymSvel\Module\Auth\Identity\PasswordLogin;
 use SymSvel\Module\Auth\Identity\PasswordResetLimiter;
+use SymSvel\Module\Auth\Identity\PasswordResetDispatch;
+use SymSvel\Module\Auth\Identity\PasswordResetCompletion;
 use SymSvel\Module\Auth\Mail\AuthMailTemplateProvider;
 use SymSvel\Module\Auth\Schema\AuthTokenSchema;
 use SymSvel\Module\Auth\Schema\EmailVerificationSchema;
 use SymSvel\Module\Auth\Schema\PasswordResetLimitSchema;
+use SymSvel\Module\Auth\Schema\PasswordResetSchema;
 use SymSvel\Module\Auth\Service\AuthSettingDefinitionProvider;
 use SymSvel\Module\Auth\Service\EmailVerificationUrlResolver;
+use SymSvel\Module\Auth\Service\PasswordResetUrlResolver;
 use SymSvel\Module\Auth\Token\AccessTokenVerifier;
 use SymSvel\Module\Auth\Token\ContextSessionLogout;
 use SymSvel\Module\Auth\Token\DbalEmailVerificationStore;
+use SymSvel\Module\Auth\Token\DbalPasswordResetStore;
 use SymSvel\Module\Auth\Token\DbalTokenStore;
 use SymSvel\Module\Auth\Token\RefreshTokenGuard;
 use SymSvel\Module\Auth\Token\TokenFactory;
@@ -77,6 +84,7 @@ final class AppRegistrationVerificationFlowTest extends TestCase
         AuthTokenSchema::apply($schema);
         EmailVerificationSchema::apply($schema);
         PasswordResetLimitSchema::apply($schema);
+        PasswordResetSchema::apply($schema);
         foreach ($schema->toSql($db->getDatabasePlatform()) as $sql) {
             $db->executeStatement($sql);
         }
@@ -98,13 +106,28 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             new SettingSecretCipher('integration-secret-for-users'),
         );
         $settingManager->set('auth.app_verify_email_url', 'https://app.example.test/verify-email');
+        $settingManager->set('auth.app_reset_url', 'https://app.example.test/reset-password');
         $settingManager->set('mails.sender_email', 'sender@example.test');
         $settingManager->flush();
 
         $sent = new \ArrayObject();
+        $mailFailure = false;
         $mailer = $this->createMock(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(
-            static function (RawMessage $message) use ($sent): void { $sent->append($message); },
+            static function (RawMessage $message) use ($sent, &$mailFailure): void {
+                if ($mailFailure) {
+                    throw new \RuntimeException('SMTP unavailable');
+                }
+                $sent->append($message);
+            },
+        );
+        $errors = [];
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->method('error')->willReturnCallback(
+            static function (string $message, array $context = []) use (&$errors): void {
+                self::assertInstanceOf(\Exception::class, $context['exception'] ?? null);
+                $errors[] = $message;
+            },
         );
         $loader = new FilesystemLoader();
         $loader->addPath(dirname((new \ReflectionClass(AuthMailTemplateProvider::class))->getFileName(), 3).'/templates', 'Auth');
@@ -119,12 +142,25 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             new ContextEmailVerificationIdentity([$owner]), new DbalEmailVerificationStore($db),
             $renderer, new ConfiguredMailSender(new MailSender($mailer), $settingManager),
         );
-        $register = new UserRegistrationController(new UserRegistration($db, $limiter), $dispatch);
+        $register = new UserRegistrationController(new UserRegistration($db, $limiter), $dispatch, $logger);
         $verify = new AppEmailVerificationController(
             $dispatch, new EmailVerificationCompletion(
                 $db, new DbalEmailVerificationStore($db),
                 new ContextEmailVerificationIdentity([$owner]),
             ),
+            $logger,
+        );
+        $reset = new AppPasswordResetController(
+            new PasswordResetDispatch(
+                $limiter, new PasswordResetUrlResolver($settingManager),
+                new ContextPasswordResetIdentity([$owner]), new DbalPasswordResetStore($db),
+                $renderer, new ConfiguredMailSender(new MailSender($mailer), $settingManager),
+            ),
+            new PasswordResetCompletion(
+                $db, new DbalPasswordResetStore($db),
+                new ContextPasswordResetIdentity([$owner]), new DbalTokenStore($db),
+            ),
+            $logger,
         );
         $principals = new ContextIdentityProvider([new UserIdentityProvider($em)]);
         $tokens = new DbalTokenStore($db);
@@ -186,6 +222,46 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             ]))->getStatusCode());
             self::assertSame(1, $sent->count());
             self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+
+            // Broken SMTP must not distinguish a newly created/pending/verified
+            // account from an unknown address through an HTTP 500.
+            $mailFailure = true;
+            $offlineRequest = self::request('/apiopen/users/register', [
+                'email' => 'offline@example.test', 'password' => 'correct-password-456', 'locale' => 'fr',
+            ]);
+            $offlineRequest->server->set('REMOTE_ADDR', '192.0.2.90');
+            $offline = $register($offlineRequest);
+            self::assertSame(202, $offline->getStatusCode());
+            self::assertSame('{"status":"accepted"}', $offline->getContent());
+            self::assertSame(1, (int) $db->fetchOne(
+                'SELECT COUNT(*) FROM symsvel_users WHERE email = ? AND email_verified_at IS NULL',
+                ['offline@example.test'],
+            ));
+
+            $db->insert('symsvel_users', [
+                'email' => 'resend@example.test',
+                'password_hash' => password_hash('correct-password-789', PASSWORD_ARGON2ID),
+                'enabled' => true,
+                'created_at' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s.u'),
+                'email_verified_at' => null,
+            ]);
+            $resendRequest = self::request('/apiopen/auth/email-verification/request', [
+                'email' => 'resend@example.test', 'locale' => 'fr',
+            ]);
+            $resendRequest->server->set('REMOTE_ADDR', '192.0.2.91');
+            self::assertSame(202, $verify->request($resendRequest)->getStatusCode());
+
+            $resetRequest = self::request('/apiopen/auth/password-reset/request', [
+                'email' => 'person@example.test', 'locale' => 'fr',
+            ]);
+            $resetRequest->server->set('REMOTE_ADDR', '192.0.2.92');
+            self::assertSame(202, $reset->request($resetRequest)->getStatusCode());
+            self::assertSame(1, $sent->count());
+            self::assertSame([
+                'App signup confirmation dispatch failed.',
+                'App email verification dispatch failed.',
+                'App password reset dispatch failed.',
+            ], $errors);
         } finally {
             $em->close();
             $settingsEm->close();
