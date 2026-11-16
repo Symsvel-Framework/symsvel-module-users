@@ -252,3 +252,12 @@ Les invitations App utilisent une table dédiée. Les changements d'adresse
 et la suppression d'un User purgent explicitement les anciens jetons dans
 la même transaction que la mutation. Le test d'intégration crée le schéma
 Auth correspondant et vérifie que les anciens liens ne subsistent pas.
+
+
+### Intégration Auth/Users de l'activation App (16/11/2026)
+
+Le test `UserInvitationActivationTest` utilise un vrai adapter Users et les
+services Auth DBAL sur SQLite : refus d'une adresse modifiée, consommation
+transactionnelle, vérification de l'adresse et mot de passe Argon2id choisi
+par l'utilisateur, puis refus de réutilisation du jeton. Pas de serveur SMTP
+dans ce test ; le crash-test de livraison reste à réaliser.
