@@ -216,3 +216,17 @@ L'inscription autonome `POST /apiopen/users/register` et la récupération
 de mot de passe des utilisateurs déjà vérifiés restent inchangées.
 Le provider App et le mot de passe final demeurent indépendants du BO.
 Les CI, l'assemblage Svelte et les CT XT SMTP et multi-SGBD sont requis.
+
+
+### Écran App d'activation par invitation (16/11/2026)
+
+La route module `app/src/routes/activate/+page.svelte`, synchronisée
+vers `/activate`, accepte un jeton opaque de 43 caractères reçu par
+e-mail. Elle le retire immédiatement de l'historique de navigation,
+impose le mot de passe choisi et sa confirmation (12 à 1024 octets),
+puis appelle `POST /apiopen/auth/invitation/complete` sans session.
+L'API Auth et Users assurent une consommation unique et la confirmation
+simultanée de l'adresse. Le formulaire efface le secret et les mots de
+passe après succès. Le login App reste distinct ; aucune session
+n'est créée silencieusement. Les textes FR/EN et la validation cliente
+sont testés dans `app/tests/invitation.test.ts`.
