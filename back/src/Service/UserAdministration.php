@@ -72,17 +72,17 @@ final readonly class UserAdministration
             return null;
         }
         try {
-            $this->connection->transactional(function () use ($id, $changes): void {
-                $this->connection->update('symsvel_users', $changes, ['id' => $id]);
-                if (array_key_exists('email', $changes)) {
-                    // Pending links to the former mailbox must never survive an address change.
-                    $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
-                    $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
-                }
-                $this->sessions->revokeAll(
-                    new TokenSubject('app', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
-                );
-            });
+            $this->sessions->revokeWith(
+                new TokenSubject('app', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                function () use ($id, $changes): void {
+                    $this->connection->update('symsvel_users', $changes, ['id' => $id]);
+                    if (array_key_exists('email', $changes)) {
+                        // Old mailbox links cannot survive an address change.
+                        $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
+                        $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
+                    }
+                },
+            );
         } catch (UniqueConstraintViolationException $exception) {
             throw new \DomainException('Email already in use.', 0, $exception);
         }
@@ -94,14 +94,14 @@ final readonly class UserAdministration
         if ($id < 1 || $this->connection->fetchOne('SELECT id FROM symsvel_users WHERE id = ?', [$id]) === false) {
             throw new \DomainException('Unknown user.');
         }
-        $this->connection->transactional(function () use ($id): void {
-            $this->sessions->revokeAll(
-                new TokenSubject('app', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
-            );
-            $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
-            $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
-            $this->connection->delete('symsvel_users', ['id' => $id]);
-        });
+        $this->sessions->revokeWith(
+            new TokenSubject('app', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            function () use ($id): void {
+                $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
+                $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
+                $this->connection->delete('symsvel_users', ['id' => $id]);
+            },
+        );
     }
 
     private static function email(string $value): string

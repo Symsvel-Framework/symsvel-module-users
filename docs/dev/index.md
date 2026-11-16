@@ -157,3 +157,7 @@ Les formulaires de création importent `passwordStrength()` depuis les clients A
 ### Intégrité des liens lors d'un changement d'adresse (16/11/2026)
 
 Le service `UserAdministration` supprime, dans la même transaction DBAL que le changement d'adresse, les jetons App de confirmation et de récupération de mot de passe encore associés au compte. Ils ne peuvent ainsi pas être utilisés après une modification, même si l'ancienne adresse est réattribuée plus tard. Les sessions restent toutes révoquées et `email_verified_at` repasse à `NULL`. `UserAdministrationTest` utilise les vraies tables Auth en SQLite pour vérifier création Argon2id, absence de vérification implicite, nettoyage et suppression. CI et CT XT requis.
+
+### Transactions uniques Auth / Users (16/11/2026)
+
+Les mutations BO de rôle, d'état, d'adresse ou de suppression utilisent désormais `TokenSessionRevoker::revokeWith()` comme **unique propriétaire de transaction** : modification du compte et révocation des sessions dans le même `DbalTokenStore`. Cela évite une transaction DBAL extérieure au verrou SQLite du TokenStore, tout en conservant le rollback sur erreur et les contrôles ACL. Le contrat public `revokeAll()` demeure inchangé. Les crash-tests sur les quatre moteurs et la CI de l'assemblage sont nécessaires avant clôture.
