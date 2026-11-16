@@ -81,3 +81,46 @@ jobs:
           npx playwright install chromium
           npm run test:unit -- --run
           npx playwright test src/routes/registration.e2e.ts
+
+  bo-integration:
+    runs-on: [self-hosted, linux, ARM64, symsvel]
+    steps:
+      - name: Checkout Users module
+        uses: actions/checkout@v4
+      - name: Checkout BO host on dev
+        uses: actions/checkout@v4
+        with:
+          repository: Symsvel-Framework/symsvel-bo
+          ref: dev
+          path: assembled-bo
+          token: ${{ secrets.SYMSVEL_READ_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: assembled-bo/package-lock.json
+      - name: Assemble Users BO route like Tooling
+        run: |
+          mkdir -p assembled-bo/src/lib/modules/users/routes/users
+          mkdir -p assembled-bo/src/routes/users
+          cp bo/src/lib/modules/users/*.ts assembled-bo/src/lib/modules/users/
+          cp bo/src/routes/users/+page.svelte assembled-bo/src/lib/modules/users/routes/users/+page.svelte
+          cat > assembled-bo/src/routes/users/+page.svelte <<'ROUTE'
+          <script lang="ts">
+            import ModulePage from '#lib/modules/users/routes/users/+page.svelte';
+          </script>
+          <ModulePage />
+          ROUTE
+      - name: Install BO dependencies
+        working-directory: assembled-bo
+        run: npm ci --no-audit --no-fund
+      - name: Match BO formatting conventions
+        working-directory: assembled-bo
+        run: npm run format
+      - name: Check assembled BO
+        working-directory: assembled-bo
+        run: |
+          npm run check
+          npm run lint
+          npm run build
+          npm run test:unit -- --run
