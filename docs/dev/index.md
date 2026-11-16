@@ -161,3 +161,7 @@ Le service `UserAdministration` supprime, dans la même transaction DBAL que le 
 ### Transactions uniques Auth / Users (16/11/2026)
 
 Les mutations BO de rôle, d'état, d'adresse ou de suppression utilisent désormais `TokenSessionRevoker::revokeWith()` comme **unique propriétaire de transaction** : modification du compte et révocation des sessions dans le même `DbalTokenStore`. Cela évite une transaction DBAL extérieure au verrou SQLite du TokenStore, tout en conservant le rollback sur erreur et les contrôles ACL. Le contrat public `revokeAll()` demeure inchangé. Les crash-tests sur les quatre moteurs et la CI de l'assemblage sont nécessaires avant clôture.
+
+### Déclaration de navigation BO (16/11/2026)
+
+Le module fournit `bo/src/lib/modules/users/navigation.ts`, qui décrit sa page `/users` avec libellés FR/EN et sa permission `users:list`. Le dashboard du BO hôte importe les déclarations des modules effectivement installés ; il n'affiche cette entrée que si `GET /apibo/users` réussit via `boApi`, ce qui vérifie le droit côté PHP avant toute navigation. Aucune route Symfony centrale ni règle d'accès Svelte parallèle n'est créée. Le test `bo/tests/users.test.ts` valide la déclaration, et la CI de l'assemblage BO doit confirmer l'import. CT XT après mise à jour du BO et des modules.
