@@ -44,6 +44,28 @@ final readonly class UserAdministration
     }
 
     /**
+     * BO account invitation: the initial credential is generated with a
+     * cryptographically secure random value and is never returned to the caller.
+     * Only the emailed single-use activation token can set a usable password.
+     */
+    public function invite(string $email, \DateTimeImmutable $now): int
+    {
+        return $this->create($email, bin2hex(random_bytes(32)), $now);
+    }
+
+    /** Pending addresses may be re-invited by an ACL-authorized BO actor. */
+    public function pendingInvitationEmail(int $id): ?string
+    {
+        if ($id < 1) return null;
+        $email = $this->connection->fetchOne(
+            'SELECT email FROM symsvel_users WHERE id = ? AND enabled = ? AND email_verified_at IS NULL',
+            [$id, true],
+            [\Doctrine\DBAL\ParameterType::INTEGER, \Doctrine\DBAL\ParameterType::BOOLEAN],
+        );
+        return is_string($email) ? $email : null;
+    }
+
+    /**
      * Updates only permitted fields; returns the newly pending email, if any.
      * A changed email always loses its verification stamp and active sessions.
      */
@@ -80,6 +102,8 @@ final readonly class UserAdministration
                         // Old mailbox links cannot survive an address change.
                         $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
                         $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
+                $this->connection->delete('symsvel_auth_app_invitations', ['principal_id' => $id]);
+                        $this->connection->delete('symsvel_auth_app_invitations', ['principal_id' => $id]);
                     }
                 },
             );

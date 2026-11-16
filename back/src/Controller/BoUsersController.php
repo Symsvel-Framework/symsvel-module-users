@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use SymSvel\Module\Acls\Access\BoAccessGate;
 use SymSvel\Module\Auth\Identity\EmailVerificationDispatch;
+use SymSvel\Module\Auth\Identity\AppInvitationDispatch;
 use SymSvel\Module\Users\Service\UserAdministration;
 
 /** All actions use BO tokens and explicit ACLs; never App credentials. */
@@ -21,6 +22,7 @@ final readonly class BoUsersController
         private Connection $connection,
         private UserAdministration $users,
         private EmailVerificationDispatch $confirmation,
+        private AppInvitationDispatch $invitations,
         private LoggerInterface $logger,
     ) {
     }
@@ -53,22 +55,38 @@ final readonly class BoUsersController
         if ($body instanceof JsonResponse) {
             return $body;
         }
-        if (array_diff(array_keys($body), ['email', 'password', 'locale'])
-            || !is_string($body['email'] ?? null) || !is_string($body['password'] ?? null)
+        if (array_diff(array_keys($body), ['email', 'locale'])
+            || !is_string($body['email'] ?? null)
             || !in_array($body['locale'] ?? 'fr', ['fr', 'en'], true)) {
             return self::error(400);
         }
         try {
-            $id = $this->users->create(
-                $body['email'], $body['password'], new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            $id = $this->users->invite(
+                $body['email'], new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
             );
         } catch (\InvalidArgumentException) {
             return self::error(400);
         } catch (\DomainException) {
             return self::error(409);
         }
-        $sent = $this->deliver($body['email'], $body['locale'] ?? 'fr', $request);
-        return self::reply(['id' => $id, 'status' => 'created', 'confirmation_sent' => $sent], 201);
+        $sent = $this->invite($id, $body['email'], $body['locale'] ?? 'fr');
+        return self::reply(['id' => $id, 'status' => 'invited', 'invitation_sent' => $sent], 201);
+    }
+
+    #[Route('/apibo/users/{id<\d+>}/invitations/resend', name: 'symsvel_users_bo_invitation_resend', methods: ['POST'], format: 'json')]
+    public function resend(Request $request, int $id): JsonResponse
+    {
+        if (($error = $this->authorize($request, 'update')) !== null) return $error;
+        $body = self::payload($request);
+        if ($body instanceof JsonResponse) return $body;
+        if (array_diff(array_keys($body), ['locale'])
+            || !in_array($body['locale'] ?? 'fr', ['fr', 'en'], true)) {
+            return self::error(400);
+        }
+        $email = $this->users->pendingInvitationEmail($id);
+        if ($email === null) return self::error(404);
+        $sent = $this->invite($id, $email, $body['locale'] ?? 'fr');
+        return self::reply(['status' => $sent ? 'invitation_resent' : 'mail_unavailable', 'invitation_sent' => $sent]);
     }
 
     #[Route('/apibo/users/{id<\d+>}', name: 'symsvel_users_bo_update', methods: ['PATCH'], format: 'json')]
@@ -111,6 +129,20 @@ final readonly class BoUsersController
             return self::error(404);
         }
         return self::reply(['status' => 'deleted']);
+    }
+
+    private function invite(int $id, string $email, string $locale): bool
+    {
+        try {
+            $this->invitations->dispatch(
+                $id, strtolower(trim($email)), $locale,
+                new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            );
+            return true;
+        } catch (\Exception $exception) {
+            $this->logger->error('BO user invitation delivery failed.', ['exception' => $exception]);
+            return false;
+        }
     }
 
     private function deliver(string $email, string $locale, Request $request): bool

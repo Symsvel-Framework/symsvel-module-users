@@ -192,3 +192,27 @@ L'indicateur natif de robustesse du mot de passe utilise la balise HTML non vide
 `<meter></meter>`. Une balise autofermante `<meter />` génère un avertissement
 Svelte 5 et est interdite dans les routes BO. Le changement ne modifie
 ni la validation du mot de passe ni l'API.
+
+
+## Invitations BO des utilisateurs App (16/11/2026)
+
+Le formulaire BO ne choisit plus de mot de passe pour autrui :
+`POST /apibo/users` accepte `email` et `locale`, crée une identité
+non vérifiée avec un hash Argon2id aléatoire inaccessible, puis Auth envoie
+un mail d'invitation avec jeton séparé et lien de création du vrai mot de passe.
+Le frontend ne transmet jamais de mot de passe initial à l'administrateur.
+La réponse `invitation_sent` indique un éventuel échec de transport sans
+supprimer silencieusement le compte créé.
+
+`POST /apibo/users/{id}/invitations/resend` exige l'ACL BO `users:update`
+et une identité active non vérifiée ; il renvoie le lien au mail stocké,
+jamais à une adresse fournie par le navigateur. `UserInvitationIdentity`
+fournit le contrat optionnel d'Auth et réutilise les écritures transactionnelles
+de `UserPasswordResetIdentity` pour confirmer l'email puis remplacer le hash.
+Une ancienne adresse invalide automatiquement les jetons App lors de la
+modification du compte ; la suppression purge également ces jetons.
+
+L'inscription autonome `POST /apiopen/users/register` et la récupération
+de mot de passe des utilisateurs déjà vérifiés restent inchangées.
+Le provider App et le mot de passe final demeurent indépendants du BO.
+Les CI, l'assemblage Svelte et les CT XT SMTP et multi-SGBD sont requis.
