@@ -165,3 +165,12 @@ Les mutations BO de rôle, d'état, d'adresse ou de suppression utilisent désor
 ### Déclaration de navigation BO (16/11/2026)
 
 Le module fournit `bo/src/lib/modules/users/navigation.ts`, qui décrit sa page `/users` avec libellés FR/EN et sa permission `users:list`. Le dashboard du BO hôte importe les déclarations des modules effectivement installés ; il n'affiche cette entrée que si `GET /apibo/users` réussit via `boApi`, ce qui vérifie le droit côté PHP avant toute navigation. Aucune route Symfony centrale ni règle d'accès Svelte parallèle n'est créée. Le test `bo/tests/users.test.ts` valide la déclaration, et la CI de l'assemblage BO doit confirmer l'import. CT XT après mise à jour du BO et des modules.
+
+
+## Coque BO partagée (16/11/2026)
+
+La page /users conserve uniquement ses formulaires,
+tableaux et appels `boApi`. La session, la sidebar, la topbar et la
+navigation active sont gérées par le layout hôte de `symsvel-bo`.
+La route générée par Tooling reste inchangée et les ACL restent dans les
+contrôleurs PHP. Voir `symsvel-bo/docs/bo-ui.md`.
