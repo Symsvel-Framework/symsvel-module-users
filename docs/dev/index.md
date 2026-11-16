@@ -184,3 +184,11 @@ Les écrans réutilisent maintenant `Button` (primaire et secondaire) et
 Les modules fournissent les libellés, états, callbacks et appels `boApi`.
 Aucune logique d'ACL n'est déplacée vers les composants.
 Voir `symsvel-bo/docs/bo-ui.md`.
+
+
+## Compatibilité des balises Svelte (16/11/2026)
+
+L'indicateur natif de robustesse du mot de passe utilise la balise HTML non vide
+`<meter></meter>`. Une balise autofermante `<meter />` génère un avertissement
+Svelte 5 et est interdite dans les routes BO. Le changement ne modifie
+ni la validation du mot de passe ni l'API.
