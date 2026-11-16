@@ -35,3 +35,47 @@ jobs:
           composer show symsvel-framework/module-settings
           php -r 'require "vendor/autoload.php"; if (!interface_exists("SymSvel\\Module\\Auth\\Identity\\PasswordResetIdentity")) { fwrite(STDERR, "Auth PasswordResetIdentity missing from installed dependency\\n"); exit(1); }'
       - run: composer qa
+
+  app-integration:
+    runs-on: [self-hosted, linux, ARM64, symsvel]
+    steps:
+      - name: Checkout Users module
+        uses: actions/checkout@v4
+      - name: Checkout App host on dev
+        uses: actions/checkout@v4
+        with:
+          repository: Symsvel-Framework/symsvel-app
+          ref: dev
+          path: assembled-app
+          token: ${{ secrets.SYMSVEL_READ_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: assembled-app/package-lock.json
+      - name: Assemble Users routes like Tooling
+        run: |
+          mkdir -p assembled-app/src/lib/modules/users/routes/register
+          mkdir -p assembled-app/src/routes/register
+          cp app/src/lib/modules/users/*.ts assembled-app/src/lib/modules/users/
+          cp app/src/routes/register/+page.svelte assembled-app/src/lib/modules/users/routes/register/+page.svelte
+          cat > assembled-app/src/routes/register/+page.svelte <<'ROUTE'
+          <script lang="ts">
+            import ModulePage from '#lib/modules/users/routes/register/+page.svelte';
+          </script>
+          <ModulePage />
+          ROUTE
+      - name: Install App dependencies
+        working-directory: assembled-app
+        run: npm ci --no-audit --no-fund
+      - name: Match App formatting conventions
+        working-directory: assembled-app
+        run: npm run format
+      - name: Check assembled App
+        working-directory: assembled-app
+        run: |
+          npm run check
+          npm run lint
+          npm run build
+          npx playwright install chromium
+          npm run test:unit -- --run

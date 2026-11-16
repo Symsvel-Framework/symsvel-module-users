@@ -109,3 +109,13 @@ Les écrans App et la configuration HTTPS de `auth.app_verify_email_url` seront 
 ### Correction de tests (16/11/2026)
 
 La réflexion du chemin Route s'effectue par l'argument de l'attribut (Symfony 8), pas via une méthode getPath inexistante sur l'attribut.
+
+### Interface d'inscription du module Users (16/11/2026)
+
+Users fournit désormais `app/src/routes/register/+page.svelte`, synchronisé vers `/register` par Tooling sur une installation App. Le formulaire envoie `POST /apiopen/users/register` au moyen du **client natif App** `api(...,{public:true})`, sans jeton ni cookie. La saisie confirme le mot de passe et applique les limites 12 à 1024 octets, validées une seconde fois côté serveur. Le message de succès est volontairement générique pour les comptes existants et les requêtes limitées.
+
+Les libellés sont externalisés dans `app/src/lib/modules/users/registration.ts`, en FR/EN avec repli EN. Après inscription, l'utilisateur passe par `/verify-email` et `/login` (pages natives de l'App). Aucun compte non vérifié n'obtient de session App. Tests Vitest de la langue et des mots de passe inclus.
+
+**Compatibilité des installations partielles :** l'ancien manifeste Users imposait `front` pour une simple page de ping. Or Users est nécessaire pour App, tandis que Front reste facultatif (`symsvel create-project --components=app`). Le scope `front` a donc été supprimé du manifeste pour ne pas rendre Front obligatoire sans raison ; Back, BO et App restent disponibles.
+
+La CI Users ajoute un job indépendant qui assemble son écran dans le dépôt `symsvel-app/dev`, puis valide TypeScript/Svelte, Prettier, le build statique et Vitest. Cette validation ne remplace pas les crash-tests HTTP/SMTP/multi-SGBD locaux.
