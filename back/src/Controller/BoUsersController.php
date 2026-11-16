@@ -106,6 +106,9 @@ final readonly class BoUsersController
             || (!array_key_exists('email', $body) && !array_key_exists('enabled', $body))) {
             return self::error(400);
         }
+        // Preserve the invitation flow for a user who has not yet chosen a
+        // password. A previously verified user only needs email reconfirmation.
+        $awaitingActivation = $this->users->pendingInvitationEmail($id) !== null;
         try {
             $pendingEmail = $this->users->update($id, $body['email'] ?? null, $body['enabled'] ?? null);
         } catch (\InvalidArgumentException) {
@@ -113,7 +116,13 @@ final readonly class BoUsersController
         } catch (\DomainException) {
             return self::error(409);
         }
-        $sent = $pendingEmail !== null ? $this->deliver($pendingEmail, $body['locale'] ?? 'fr', $request) : null;
+        $sent = null;
+        if ($pendingEmail !== null) {
+            $locale = $body['locale'] ?? 'fr';
+            $sent = $awaitingActivation && $this->users->pendingInvitationEmail($id) !== null
+                ? $this->invite($id, $pendingEmail, $locale)
+                : $this->deliver($pendingEmail, $locale, $request);
+        }
         return self::reply(['status' => 'updated', 'confirmation_sent' => $sent]);
     }
 

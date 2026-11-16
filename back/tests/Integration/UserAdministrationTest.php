@@ -104,6 +104,16 @@ final class UserAdministrationTest extends TestCase
         self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
     }
 
+    public function testPendingInvitedUserWithChangedAddressNeedsNewActivationLink(): void
+    {
+        [$users, $db] = $this->fixture();
+        $id = $users->invite('initial@example.test', new \DateTimeImmutable('2026-11-16T14:00:00Z'));
+        self::assertSame('initial@example.test', $users->pendingInvitationEmail($id));
+        self::assertSame('new@example.test', $users->update($id, ' NEW@Example.test ', null));
+        self::assertSame('new@example.test', $users->pendingInvitationEmail($id));
+        self::assertNull($db->fetchOne('SELECT email_verified_at FROM symsvel_users WHERE id = ?', [$id]));
+    }
+
     public function testInvalidPasswordAndUnknownUserAreRejected(): void
     {
         [$users] = $this->fixture();

@@ -261,3 +261,12 @@ services Auth DBAL sur SQLite : refus d'une adresse modifiée, consommation
 transactionnelle, vérification de l'adresse et mot de passe Argon2id choisi
 par l'utilisateur, puis refus de réutilisation du jeton. Pas de serveur SMTP
 dans ce test ; le crash-test de livraison reste à réaliser.
+
+
+### Changement d'adresse avant activation (16/11/2026)
+
+Quand le BO modifie l'email d'un compte **encore non vérifié**, la nouvelle
+adresse reçoit un lien d'invitation App lui permettant de créer le mot de
+passe. Un compte auparavant vérifié conserve son parcours de simple
+reconfirmation d'adresse. Une désactivation n'émet pas d'invitation
+supplémentaire. Les anciens jetons sont purgés pendant la mutation.
