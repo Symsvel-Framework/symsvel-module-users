@@ -123,3 +123,7 @@ La CI Users ajoute un job indépendant qui assemble son écran dans le dépôt `
 ### Test d'intégration complet App sans navigateur (16/11/2026)
 
 `AppRegistrationVerificationFlowTest` utilise les vrais services DBAL/ORM Auth, Users, Settings et Mails sur SQLite en mémoire. Il vérifie l'inscription avec réponse uniforme, l'émission d'un mail à l'adresse persistée, le refus de connexion avant confirmation, la confirmation à usage unique, la connexion, la vérification `/api/auth/me`, la rotation du refresh, la déconnexion et le rejet des anciens jetons. Un nouvel enregistrement du même e-mail ne doit modifier ni le compte ni les messages envoyés. Ce test n'utilise pas un serveur HTTP réel ni les domaines de déploiement ; il complète, mais ne remplace pas, les CT.
+
+### Tests Playwright du formulaire d'inscription (16/11/2026)
+
+Le test `app/tests/registration.e2e.ts` est copié dans l'App assemblée par le job CI Users. Chromium vérifie que le formulaire `/register` envoie une requête `/apiopen/users/register` sans Authorization, présente un accusé de réception uniforme et bloque localement les mots de passe discordants avant tout appel réseau. Le serveur est simulé dans ces deux scénarios ; le test de bout en bout PHP SQLite reste la preuve de l'intégration serveur, et les CT HTTP réels restent nécessaires.
