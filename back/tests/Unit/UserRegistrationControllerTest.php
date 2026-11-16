@@ -25,6 +25,6 @@ final class UserRegistrationControllerTest extends TestCase
         $routes = (new \ReflectionMethod(UserRegistrationController::class, '__invoke'))
             ->getAttributes(\Symfony\Component\Routing\Attribute\Route::class);
         self::assertCount(1, $routes);
-        self::assertSame('/apiopen/users/register', $routes[0]->newInstance()->getPath());
+        self::assertSame('/apiopen/users/register', $routes[0]->getArguments()[0]);
     }
 }

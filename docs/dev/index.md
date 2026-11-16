@@ -105,3 +105,7 @@ Si un compte vient d'être créé, `UserRegistrationController` déclenche `Emai
 `UserIdentityProvider` refuse désormais **l'authentification ainsi que la validité des sessions** tant que `email_verified_at` est nul. Cette règle s'applique aussi aux comptes existants non vérifiés : aucune connexion par simple possession de mot de passe. Le contexte BO est toujours rejeté. Tests : insertion/normalisation/Argon2id/doublons/limiteur SQLite, requêtes invalides, et contrôle réel de la connexion avant et après confirmation.
 
 Les écrans App et la configuration HTTPS de `auth.app_verify_email_url` seront validés dans les passes correspondantes. Aucun compte App n'est vérifié lors de l'inscription ni du Setup BO. Les CT finaux restent nécessaires ; mail SMTP, CORS et migrations multi-SGBD n'ont pas encore été crash-testés sur une installation.
+
+### Correction de tests (16/11/2026)
+
+La réflexion du chemin Route s'effectue par l'argument de l'attribut (Symfony 8), pas via une méthode getPath inexistante sur l'attribut.
