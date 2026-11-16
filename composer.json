@@ -11,7 +11,8 @@
         "symsvel-framework/module-auth": "dev-dev",
         "symsvel-framework/module-mails": "dev-dev",
         "symsvel-framework/module-settings": "dev-dev",
-        "doctrine/migrations": "^3.9"
+        "doctrine/migrations": "^3.9",
+        "symsvel-framework/module-acls": "dev-dev"
     },
     "autoload": {
         "psr-4": {
@@ -41,6 +42,10 @@
         }
     },
     "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-acls.git"
+        },
         {
             "type": "vcs",
             "url": "https://github.com/Symsvel-Framework/symsvel-module-auth.git"

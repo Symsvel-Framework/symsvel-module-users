@@ -139,3 +139,9 @@ Le test DBAL/ORM intégré `AppRegistrationVerificationFlowTest` simule une pann
 
 Le test intégré `AppRegistrationVerificationFlowTest` utilise désormais les métadonnées `local_domain` du Setup pour construire le lien HTTPS `/verify-email`. Il ne configure plus `auth.app_verify_email_url` dans Settings. Le vrai service Auth `EmailVerificationUrlResolver` lit `.symsvel/project.json` à la racine du workspace, et ne consulte jamais le domaine d'une requête. Les quatre étapes inscription, confirmation, login et session restent exercées par le test, avec conservation des garanties SMTP et anti-énumération. Le domaine local doit être servi en HTTPS pour que le lien soit navigable. Vérifier la CI Users sur Auth/dev, puis le crash-test SMTP/HTTP XT.
 
+
+## CRUD Users depuis le BO (16/11/2026)
+
+`UserAdministration` porte les mutations de comptes depuis le BO, séparées du quota anti-abus de l'inscription anonyme. La création conserve un hash Argon2id, `email_verified_at = NULL` et `enabled = true`, puis Auth tente d'envoyer la confirmation. Le contrôleur protégé `BoUsersController` expose `GET/POST /apibo/users`, `PATCH/DELETE /apibo/users/{id}` avec les ACL `users:list/create/update/delete` fournies par `BoAccessGate` dans ACLs (implémentation Admins). Le BO peut modifier l'adresse et l'activation ; un changement d'adresse annule sa confirmation et toutes les sessions App, puis déclenche une nouvelle confirmation. La suppression révoque les sessions et efface les jetons de confirmation/récupération dans une transaction commune. Les réponses ne contiennent pas de hash ni de secrets ; un envoi SMTP impossible est journalisé et visible seulement par `confirmation_sent=false` pour cet administrateur authentifié.
+
+Les éventuels rôles Users/App restent hors de ce CRUD (aucun rôle User dédié dans cette entité). Les tests/CI et le crash-test XT restent obligatoires.

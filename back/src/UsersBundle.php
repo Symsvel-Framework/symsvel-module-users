@@ -10,6 +10,8 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use SymSvel\Module\Users\Controller\UsersPingController;
 use Symfony\Component\DependencyInjection\Reference;
 use SymSvel\Module\Users\Controller\UserRegistrationController;
+use SymSvel\Module\Users\Controller\BoUsersController;
+use SymSvel\Module\Users\Service\UserAdministration;
 use SymSvel\Module\Users\Service\UserRegistration;
 use SymSvel\Module\Users\Auth\UserIdentityProvider;
 use SymSvel\Module\Users\Auth\UserPasswordResetIdentity;
@@ -26,6 +28,9 @@ final class UsersBundle extends AbstractBundle
         $builder->register(UserRegistration::class, UserRegistration::class)
             ->setAutowired(true)
             ->setArgument('$connection', new Reference('doctrine.dbal.default_connection'));
+        $builder->register(UserAdministration::class, UserAdministration::class)->setAutowired(true);
+        $builder->register(BoUsersController::class, BoUsersController::class)
+            ->setAutowired(true)->addTag('controller.service_arguments');
         $builder->register(UserRegistrationController::class, UserRegistrationController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
