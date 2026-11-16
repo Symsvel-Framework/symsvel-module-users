@@ -153,3 +153,7 @@ La route BO `/users` consomme la nouvelle API via `boApi` et contrôle `currentB
 ### Indicateur de mot de passe sur App Register et BO Users (16/11/2026)
 
 Les formulaires de création importent `passwordStrength()` depuis les clients App et BO natifs, affichent un indicateur progressif et les limites exactes validées par le serveur (12 à 1024 octets UTF-8, pas de NUL). Le score indique la diversité, sans imposer une nouvelle règle de composition. Les messages sont traduits dans les modules, et les contrôles finaux existants restent appliqués avant POST. L'attribut HTML `minlength=12` a été retiré car il comptait les caractères JS et rejetait certains mots de passe Unicode pourtant valides en octets. CI assemblées et CT navigateur requis.
+
+### Intégrité des liens lors d'un changement d'adresse (16/11/2026)
+
+Le service `UserAdministration` supprime, dans la même transaction DBAL que le changement d'adresse, les jetons App de confirmation et de récupération de mot de passe encore associés au compte. Ils ne peuvent ainsi pas être utilisés après une modification, même si l'ancienne adresse est réattribuée plus tard. Les sessions restent toutes révoquées et `email_verified_at` repasse à `NULL`. `UserAdministrationTest` utilise les vraies tables Auth en SQLite pour vérifier création Argon2id, absence de vérification implicite, nettoyage et suppression. CI et CT XT requis.

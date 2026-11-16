@@ -74,6 +74,11 @@ final readonly class UserAdministration
         try {
             $this->connection->transactional(function () use ($id, $changes): void {
                 $this->connection->update('symsvel_users', $changes, ['id' => $id]);
+                if (array_key_exists('email', $changes)) {
+                    // Pending links to the former mailbox must never survive an address change.
+                    $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
+                    $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
+                }
                 $this->sessions->revokeAll(
                     new TokenSubject('app', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
                 );
