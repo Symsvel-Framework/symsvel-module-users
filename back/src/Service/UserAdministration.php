@@ -102,7 +102,6 @@ final readonly class UserAdministration
                         // Old mailbox links cannot survive an address change.
                         $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
                         $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
-                $this->connection->delete('symsvel_auth_app_invitations', ['principal_id' => $id]);
                         $this->connection->delete('symsvel_auth_app_invitations', ['principal_id' => $id]);
                     }
                 },
@@ -123,6 +122,7 @@ final readonly class UserAdministration
             function () use ($id): void {
                 $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
                 $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
+                $this->connection->delete('symsvel_auth_app_invitations', ['principal_id' => $id]);
                 $this->connection->delete('symsvel_users', ['id' => $id]);
             },
         );

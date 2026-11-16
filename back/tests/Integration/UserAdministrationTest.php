@@ -9,6 +9,7 @@ use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Schema\Schema;
 use PHPUnit\Framework\TestCase;
 use SymSvel\Module\Auth\Schema\AuthTokenSchema;
+use SymSvel\Module\Auth\Schema\AppInvitationSchema;
 use SymSvel\Module\Auth\Schema\EmailVerificationSchema;
 use SymSvel\Module\Auth\Schema\PasswordResetSchema;
 use SymSvel\Module\Auth\Token\DbalTokenStore;
@@ -29,6 +30,7 @@ final class UserAdministrationTest extends TestCase
         AuthTokenSchema::apply($schema);
         EmailVerificationSchema::apply($schema);
         PasswordResetSchema::apply($schema);
+        AppInvitationSchema::apply($schema);
         foreach ($schema->toSql($db->getDatabasePlatform()) as $sql) {
             $db->executeStatement($sql);
         }
@@ -51,6 +53,19 @@ final class UserAdministrationTest extends TestCase
         $users->create('test@example.test', 'second-password-123', new \DateTimeImmutable());
     }
 
+    public function testInviteCreatesAnUnverifiedAccountWithUnknownRandomCredential(): void
+    {
+        [$users, $db] = $this->fixture();
+        $id = $users->invite(' INVITED@Example.test ', new \DateTimeImmutable('2026-11-16T14:00:00Z'));
+        $row = $db->fetchAssociative('SELECT email, enabled, password_hash, email_verified_at FROM symsvel_users WHERE id = ?', [$id]);
+        self::assertSame('invited@example.test', $row['email']);
+        self::assertNull($row['email_verified_at']);
+        self::assertSame(1, (int) $row['enabled']);
+        self::assertSame('argon2id', password_get_info((string) $row['password_hash'])['algoName']);
+        self::assertSame('invited@example.test', $users->pendingInvitationEmail($id));
+        self::assertNull($users->pendingInvitationEmail(999));
+    }
+
     public function testChangingEmailClearsVerificationAndPendingTokens(): void
     {
         [$users, $db] = $this->fixture();
@@ -69,6 +84,13 @@ final class UserAdministrationTest extends TestCase
             }
             $db->insert($table, $values);
         }
+        $db->insert('symsvel_auth_app_invitations', [
+            'principal_id' => $id,
+            'email_hash' => hash('sha256', 'before@example.test'),
+            'token_hash' => hash('sha256', 'invited'),
+            'created_at' => '2026-11-16 13:00:00',
+            'expires_at' => '2026-11-16 15:00:00',
+        ]);
         self::assertSame('after@example.test', $users->update($id, ' AFTER@Example.test ', false));
         $row = $db->fetchAssociative('SELECT email, enabled, email_verified_at FROM symsvel_users WHERE id = ?', [$id]);
         self::assertSame('after@example.test', $row['email']);
@@ -76,6 +98,7 @@ final class UserAdministrationTest extends TestCase
         self::assertNull($row['email_verified_at']);
         self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_email_verification_tokens'));
         self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_password_reset_tokens'));
+        self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_app_invitations'));
 
         $users->delete($id);
         self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));

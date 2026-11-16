@@ -244,3 +244,11 @@ un compte actif dont l'adresse n'est pas encore confirmée.
 Comme le contrat GET actuel contient au plus 200 lignes, cette pagination
 s'exécute côté client comme dans XCore et ne doit pas être confondue avec
 une pagination serveur complète. CI et CT XT nécessaires avant validation.
+
+
+### Nettoyage transactionnel des invitations (16/11/2026)
+
+Les invitations App utilisent une table dédiée. Les changements d'adresse
+et la suppression d'un User purgent explicitement les anciens jetons dans
+la même transaction que la mutation. Le test d'intégration crée le schéma
+Auth correspondant et vérifie que les anciens liens ne subsistent pas.
