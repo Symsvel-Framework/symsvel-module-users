@@ -119,3 +119,7 @@ Les libellés sont externalisés dans `app/src/lib/modules/users/registration.ts
 **Compatibilité des installations partielles :** l'ancien manifeste Users imposait `front` pour une simple page de ping. Or Users est nécessaire pour App, tandis que Front reste facultatif (`symsvel create-project --components=app`). Le scope `front` a donc été supprimé du manifeste pour ne pas rendre Front obligatoire sans raison ; Back, BO et App restent disponibles.
 
 La CI Users ajoute un job indépendant qui assemble son écran dans le dépôt `symsvel-app/dev`, puis valide TypeScript/Svelte, Prettier, le build statique et Vitest. Cette validation ne remplace pas les crash-tests HTTP/SMTP/multi-SGBD locaux.
+
+### Test d'intégration complet App sans navigateur (16/11/2026)
+
+`AppRegistrationVerificationFlowTest` utilise les vrais services DBAL/ORM Auth, Users, Settings et Mails sur SQLite en mémoire. Il vérifie l'inscription avec réponse uniforme, l'émission d'un mail à l'adresse persistée, le refus de connexion avant confirmation, la confirmation à usage unique, la connexion, la vérification `/api/auth/me`, la rotation du refresh, la déconnexion et le rejet des anciens jetons. Un nouvel enregistrement du même e-mail ne doit modifier ni le compte ni les messages envoyés. Ce test n'utilise pas un serveur HTTP réel ni les domaines de déploiement ; il complète, mais ne remplace pas, les CT.
