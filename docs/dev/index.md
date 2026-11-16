@@ -174,3 +174,13 @@ tableaux et appels `boApi`. La session, la sidebar, la topbar et la
 navigation active sont gérées par le layout hôte de `symsvel-bo`.
 La route générée par Tooling reste inchangée et les ACL restent dans les
 contrôleurs PHP. Voir `symsvel-bo/docs/bo-ui.md`.
+
+
+## Composants génériques SymSvel BO (16/11/2026)
+
+Les écrans réutilisent maintenant `Button` (primaire et secondaire) et
+`Alert` (succès et erreur) du BO hôte via
+`src/lib/components/`. La liste des utilisateurs avec édition en ligne conserve le tableau HTML natif, adapté aux formulaires intégrés.
+Les modules fournissent les libellés, états, callbacks et appels `boApi`.
+Aucune logique d'ACL n'est déplacée vers les composants.
+Voir `symsvel-bo/docs/bo-ui.md`.

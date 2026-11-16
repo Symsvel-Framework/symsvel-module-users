@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import Button from '../../../../components/Button.svelte';
+  import Alert from '../../../../components/Alert.svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { ApiError } from '../../../../api/client';
@@ -137,8 +139,8 @@
         <section class="panel">
           <h1>{t.heading}</h1>
           <p>{t.intro}</p>
-          {#if error}<p class="notice error" role="alert">{error}</p>{/if}
-          {#if message}<p class="notice success" role="status">{message}</p>{/if}
+          {#if error}<Alert kind="error">{error}</Alert>{/if}
+          {#if message}<Alert kind="success">{message}</Alert>{/if}
           <form class="create-form" onsubmit={create}>
             <label for="user-email">{t.email}</label>
             <input id="user-email" type="email" bind:value={email} maxlength="254" autocomplete="off" required />
@@ -152,12 +154,12 @@
             <label for="user-password-confirm">{t.confirmPassword}</label>
             <input id="user-password-confirm" type="password" bind:value={confirmation}
               autocomplete="new-password" maxlength="1024" required />
-            <button type="submit" disabled={busy}>{busy ? t.creating : t.create}</button>
+            <Button type="submit" disabled={busy}>{busy ? t.creating : t.create}</Button>
           </form>
         </section>
         <section class="panel">
           <div class="section-heading"><h2>{t.list}</h2>
-            <button class="secondary" type="button" onclick={refresh} disabled={loading}>{t.refresh}</button>
+            <Button variant="secondary" type="button" onclick={refresh} disabled={loading}>{t.refresh}</Button>
           </div>
           {#if loading}<p role="status">{t.loading}</p>{/if}
           {#if !loading && users.length === 0}<p>{t.none}</p>{/if}
@@ -190,12 +192,12 @@
                       </td>
                       <td>
                         {#if editing === user.id}
-                          <button type="button" disabled={busy} onclick={() => save(user.id)}>{t.save}</button>
-                          <button class="secondary" type="button" onclick={() => editing = null}>{t.cancel}</button>
+                          <Button type="button" disabled={busy} onclick={() => save(user.id)}>{t.save}</Button>
+                          <Button variant="secondary" type="button" onclick={() => editing = null}>{t.cancel}</Button>
                         {:else}
-                          <button class="secondary" type="button" onclick={() => edit(user)}>{t.edit}</button>
-                          <button class="secondary" type="button" disabled={deleting !== null}
-                            onclick={() => remove(user.id)}>{t.delete}</button>
+                          <Button variant="secondary" type="button" onclick={() => edit(user)}>{t.edit}</Button>
+                          <Button variant="secondary" type="button" disabled={deleting !== null}
+                            onclick={() => remove(user.id)}>{t.delete}</Button>
                         {/if}
                       </td>
                     </tr>
@@ -216,13 +218,7 @@
   .create-form { display: grid; grid-template-columns: minmax(160px, 1fr); gap: 10px; max-width: 500px; }
   label { font-weight: 650; }
   input, select { padding: 12px; border: 1px solid #ccd4df; border-radius: 8px; font: inherit; }
-  button { border: 0; border-radius: 8px; background: #1e293b; color: white; padding: 11px 16px; font: inherit; cursor: pointer; }
-  button.secondary { border: 1px solid #ccd4df; background: white; color: #1e293b; margin: 3px; }
-  button:disabled { opacity: .55; cursor: not-allowed; }
   .section-heading { display: flex; justify-content: space-between; align-items: center; }
-  .notice { border-radius: 8px; padding: 12px 14px; }
-  .error { background: #fff1f1; color: #9d2626; }
-  .success { background: #eefaf2; color: #236747; }
   .table-container { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; margin-top: 14px; text-align: left; }
   td, th { padding: 12px; border-bottom: 1px solid #e2e7ee; }
