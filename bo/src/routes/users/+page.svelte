@@ -1,31 +1,74 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import Button from '../../../../components/Button.svelte';
-  import Alert from '../../../../components/Alert.svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import Button from '../../../../components/Button.svelte';
+  import Alert from '../../../../components/Alert.svelte';
+  import Modal from '../../../../components/Modal.svelte';
+  import DataTable from '../../../../components/DataTable.svelte';
+  import type { DataAction, DataColumn, SortOrder } from '../../../../components/data-table';
+  import type { PageSize } from '../../../../components/pagination';
   import { ApiError } from '../../../../api/client';
   import { uiLanguage } from '../../../../api/locales';
   import { boApi } from '../../../../api/session';
-  import { boUsersCopy, validBoUserPassword, type BoUser, type BoUsersResponse } from '../../bo';
-  import { passwordStrength } from '../../../../password/strength';
+  import { boUsersCopy, type BoUser, type BoUsersResponse } from '../../bo';
 
   let loading = $state(false);
   let busy = $state(false);
   let deleting = $state<number | null>(null);
-  let editing = $state<number | null>(null);
+  let resending = $state<number | null>(null);
+  let editing = $state<BoUser | null>(null);
+  let showCreate = $state(false);
   let users = $state<BoUser[]>([]);
   let email = $state('');
-  let password = $state('');
-  let confirmation = $state('');
   let editEmail = $state('');
   let editEnabled = $state(true);
   let error = $state('');
   let message = $state('');
+  let search = $state('');
+  let sortKey = $state<string | null>('email');
+  let sortOrder = $state<SortOrder>('asc');
+  let page = $state(1);
+  let limit = $state<PageSize>(20);
+
   const language = $derived($uiLanguage ?? (typeof navigator === 'undefined' ? 'en' : navigator.language));
   const t = $derived(boUsersCopy(language));
-  const strength = $derived(passwordStrength(password));
   const locale = $derived(language.toLowerCase().startsWith('fr') ? 'fr' : 'en');
+
+  const columns = $derived<DataColumn<BoUser>[]>([
+    { key: 'email', label: t.email, sortable: true },
+    { key: 'email_verified', label: t.emailState,
+      format: (v) => v ? t.verified : t.unverified },
+    { key: 'enabled', label: t.state,
+      format: (v) => v ? t.enabled : t.disabled },
+    { key: 'created_at', label: t.createdAt, sortable: true,
+      format: (v) => new Date(String(v)).toLocaleDateString(language) }
+  ]);
+  const actions = $derived<DataAction<BoUser>[]>([
+    {
+      key: 'edit', label: t.edit, onClick: (row) => edit(row)
+    },
+    {
+      key: 'resend', label: (row) => row.email_verified ? t.verified : t.resend,
+      disabled: (row) => row.email_verified || !row.enabled || resending !== null,
+      onClick: (row) => { void resend(row.id); }
+    },
+    {
+      key: 'delete', label: t.delete,
+      disabled: () => deleting !== null,
+      onClick: (row) => { void remove(row.id); }
+    }
+  ]);
+  const filtered = $derived(
+    [...users]
+      .filter((user) => user.email.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
+      .sort((a, b) => {
+        const key = sortKey === 'created_at' ? 'created_at' : 'email';
+        return a[key].localeCompare(b[key], language, { sensitivity: 'base' }) *
+          (sortOrder === 'asc' ? 1 : -1);
+      })
+  );
+  const visible = $derived(filtered.slice((page - 1) * limit, page * limit));
 
   function explain(cause: unknown): string {
     if (cause instanceof ApiError) {
@@ -53,33 +96,26 @@
     }
   }
 
-  onMount(() => {
-    void refresh();
-  });
+  onMount(() => { void refresh(); });
+
+  function openCreate(): void {
+    email = '';
+    error = '';
+    showCreate = true;
+  }
 
   async function create(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (busy) return;
     error = '';
     message = '';
-    if (password !== confirmation) {
-      error = t.passwordMismatch;
-      return;
-    }
-    if (!validBoUserPassword(password)) {
-      error = t.invalidPassword;
-      return;
-    }
     busy = true;
     try {
-      const result = await boApi<{ id: number; confirmation_sent: boolean }>('/apibo/users', {
-        method: 'POST',
-        body: JSON.stringify({ email: email.trim(), password, locale })
+      const result = await boApi<{ id: number; invitation_sent: boolean }>('/apibo/users', {
+        method: 'POST', body: JSON.stringify({ email: email.trim(), locale })
       });
-      email = '';
-      password = '';
-      confirmation = '';
-      message = result.confirmation_sent ? t.created : t.created + ' ' + t.mailPending;
+      showCreate = false;
+      message = result.invitation_sent ? t.created : t.created + ' ' + t.mailPending;
       await refresh();
     } catch (cause) {
       error = explain(cause);
@@ -89,20 +125,20 @@
   }
 
   function edit(user: BoUser): void {
-    editing = user.id;
+    editing = user;
     editEmail = user.email;
     editEnabled = user.enabled;
     message = '';
     error = '';
   }
 
-  async function save(id: number): Promise<void> {
-    if (busy) return;
+  async function save(): Promise<void> {
+    if (busy || !editing) return;
     busy = true;
     error = '';
     message = '';
     try {
-      const result = await boApi<{ confirmation_sent: boolean | null }>('/apibo/users/' + id, {
+      const result = await boApi<{ confirmation_sent: boolean | null }>('/apibo/users/' + editing.id, {
         method: 'PATCH',
         body: JSON.stringify({ email: editEmail.trim(), enabled: editEnabled, locale })
       });
@@ -116,6 +152,25 @@
     }
   }
 
+  async function resend(id: number): Promise<void> {
+    if (resending !== null) return;
+    resending = id;
+    error = '';
+    message = '';
+    try {
+      const result = await boApi<{ invitation_sent: boolean }>(
+        `/apibo/users/${id}/invitations/resend`, {
+          method: 'POST', body: JSON.stringify({ locale })
+        }
+      );
+      message = result.invitation_sent ? t.resent : t.mailPending;
+    } catch (cause) {
+      error = explain(cause);
+    } finally {
+      resending = null;
+    }
+  }
+
   async function remove(id: number): Promise<void> {
     if (deleting !== null || !window.confirm(t.confirmDelete)) return;
     deleting = id;
@@ -123,7 +178,6 @@
     message = '';
     try {
       await boApi<{ status: string }>('/apibo/users/' + id, { method: 'DELETE' });
-      if (editing === id) editing = null;
       message = t.deleted;
       await refresh();
     } catch (cause) {
@@ -136,93 +190,73 @@
 
 <svelte:head><title>{t.title} | SymSvel BO</title></svelte:head>
 <div class="users">
-        <section class="panel">
-          <h1>{t.heading}</h1>
-          <p>{t.intro}</p>
-          {#if error}<Alert kind="error">{error}</Alert>{/if}
-          {#if message}<Alert kind="success">{message}</Alert>{/if}
-          <form class="create-form" onsubmit={create}>
-            <label for="user-email">{t.email}</label>
-            <input id="user-email" type="email" bind:value={email} maxlength="254" autocomplete="off" required />
-            <label for="user-password">{t.password}</label>
-            <input id="user-password" type="password" bind:value={password}
-              autocomplete="new-password" maxlength="1024" required />
-            <small>{t.passwordRule}</small>
-            <meter min="0" max="4" value={strength.score} aria-label={t.strength}></meter>
-            <small aria-live="polite">{t.strength}: {t.strengthLevels[strength.score]}</small>
-            <small>{t.strengthHint}</small>
-            <label for="user-password-confirm">{t.confirmPassword}</label>
-            <input id="user-password-confirm" type="password" bind:value={confirmation}
-              autocomplete="new-password" maxlength="1024" required />
-            <Button type="submit" disabled={busy}>{busy ? t.creating : t.create}</Button>
-          </form>
-        </section>
-        <section class="panel">
-          <div class="section-heading"><h2>{t.list}</h2>
-            <Button variant="secondary" type="button" onclick={refresh} disabled={loading}>{t.refresh}</Button>
-          </div>
-          {#if loading}<p role="status">{t.loading}</p>{/if}
-          {#if !loading && users.length === 0}<p>{t.none}</p>{/if}
-          {#if users.length > 0}
-            <div class="table-container">
-              <table>
-                <thead><tr><th>{t.email}</th><th>{t.emailState}</th><th>{t.state}</th><th>{t.actions}</th></tr></thead>
-                <tbody>
-                  {#each users as user (user.id)}
-                    <tr>
-                      <td>
-                        {#if editing === user.id}
-                          <label class="sr-only" for={'edit-email-' + user.id}>{t.email}</label>
-                          <input id={'edit-email-' + user.id} type="email" bind:value={editEmail} maxlength="254" required />
-                        {:else}
-                          {user.email}
-                        {/if}
-                      </td>
-                      <td>{user.email_verified ? t.verified : t.unverified}</td>
-                      <td>
-                        {#if editing === user.id}
-                          <label class="sr-only" for={'edit-active-' + user.id}>{t.state}</label>
-                          <select id={'edit-active-' + user.id} bind:value={editEnabled}>
-                            <option value={true}>{t.enabled}</option>
-                            <option value={false}>{t.disabled}</option>
-                          </select>
-                        {:else}
-                          {user.enabled ? t.enabled : t.disabled}
-                        {/if}
-                      </td>
-                      <td>
-                        {#if editing === user.id}
-                          <Button type="button" disabled={busy} onclick={() => save(user.id)}>{t.save}</Button>
-                          <Button variant="secondary" type="button" onclick={() => editing = null}>{t.cancel}</Button>
-                        {:else}
-                          <Button variant="secondary" type="button" onclick={() => edit(user)}>{t.edit}</Button>
-                          <Button variant="secondary" type="button" disabled={deleting !== null}
-                            onclick={() => remove(user.id)}>{t.delete}</Button>
-                        {/if}
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          {/if}
-        </section>
+  <header class="page-heading">
+    <div><h1>{t.heading}</h1><p>{t.intro}</p></div>
+    <Button type="button" onclick={openCreate}>{t.create}</Button>
+  </header>
+  {#if message}<Alert kind="success">{message}</Alert>{/if}
+  {#if error && !showCreate && !editing}<Alert kind="error">{error}</Alert>{/if}
+  <section class="panel">
+    <div class="section-heading">
+      <h2>{t.list}</h2>
+      <Button type="button" variant="secondary" onclick={refresh} disabled={loading}>{t.refresh}</Button>
+    </div>
+    <DataTable rows={visible} {columns} {actions}
+      {loading} emptyMessage={t.none}
+      filters={[{ key: 'search', label: t.search, type: 'search', placeholder: t.searchHint }]}
+      filterValues={{ search }}
+      onFilterChange={(_, value) => { search = value; page = 1; }}
+      {sortKey} {sortOrder}
+      onSortChange={(key, order) => { sortKey = key; sortOrder = order; page = 1; }}
+      pagination={{
+        page, limit, total: filtered.length,
+        onPageChange: (value) => page = value,
+        onLimitChange: (value) => { limit = value; page = 1; }
+      }} />
+  </section>
+
+  <Modal open={showCreate} title={t.create} onClose={() => showCreate = false}>
+    <p>{t.inviteIntro}</p>
+    {#if error}<Alert kind="error">{error}</Alert>{/if}
+    <form class="modal-form" onsubmit={create}>
+      <label for="user-email">{t.email}</label>
+      <input id="user-email" type="email" bind:value={email} maxlength="254" autocomplete="email" required />
+      <div class="modal-actions">
+        <Button type="button" variant="secondary" onclick={() => showCreate = false}>{t.cancel}</Button>
+        <Button type="submit" disabled={busy}>{busy ? t.creating : t.create}</Button>
       </div>
+    </form>
+  </Modal>
+
+  <Modal open={editing !== null} title={t.edit} onClose={() => editing = null}>
+    {#if editing}
+      {#if error}<Alert kind="error">{error}</Alert>{/if}
+      <form class="modal-form" onsubmit={(event) => { event.preventDefault(); void save(); }}>
+        <label for="edit-user-email">{t.email}</label>
+        <input id="edit-user-email" type="email" bind:value={editEmail} maxlength="254" required />
+        <label for="edit-user-active">{t.state}</label>
+        <select id="edit-user-active" bind:value={editEnabled}>
+          <option value={true}>{t.enabled}</option>
+          <option value={false}>{t.disabled}</option>
+        </select>
+        <div class="modal-actions">
+          <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
+          <Button type="submit" disabled={busy}>{busy ? t.saving : t.save}</Button>
+        </div>
+      </form>
+    {/if}
+  </Modal>
+</div>
 
 <style>
-  .users { max-width: 1200px; margin: auto; display: grid; gap: 22px; }
-  .panel { background: white; border: 1px solid #e2e7ee; border-radius: 14px; padding: 28px; }
-  h1, h2 { margin-top: 0; }
-  p, small { color: #667085; }
-  meter { display: block; width: 100%; height: 13px; }
-  .create-form { display: grid; grid-template-columns: minmax(160px, 1fr); gap: 10px; max-width: 500px; }
-  label { font-weight: 650; }
-  input, select { padding: 12px; border: 1px solid #ccd4df; border-radius: 8px; font: inherit; }
-  .section-heading { display: flex; justify-content: space-between; align-items: center; }
-  .table-container { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; margin-top: 14px; text-align: left; }
-  td, th { padding: 12px; border-bottom: 1px solid #e2e7ee; }
-  th { color: #667085; font-size: .8rem; }
-  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-  @media (max-width: 700px) { .panel { padding: 18px; } }
+  .users { max-width: 1200px; margin: auto; display: grid; gap: 20px; }
+  .page-heading, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .page-heading h1, .section-heading h2 { margin: 0; }
+  .page-heading p, .modal-form p { color: #667085; }
+  .panel { background: white; border: 1px solid #e2e7ee; border-radius: 14px; padding: 24px; min-width: 0; }
+  .section-heading { margin-bottom: 18px; }
+  .modal-form { display: grid; gap: 10px; margin-top: 16px; }
+  .modal-form label { font-weight: 650; }
+  .modal-form input, .modal-form select { width: 100%; border: 1px solid #ccd4df; border-radius: 8px; padding: 11px; font: inherit; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 </style>

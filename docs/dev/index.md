@@ -230,3 +230,17 @@ simultanée de l'adresse. Le formulaire efface le secret et les mots de
 passe après succès. Le login App reste distinct ; aucune session
 n'est créée silencieusement. Les textes FR/EN et la validation cliente
 sont testés dans `app/tests/invitation.test.ts`.
+
+
+### UX BO : modal et tableau paginé (16/11/2026)
+
+L'écran Users utilise `Modal` et `DataTable` du BO hôte. La création
+ne demande que l'email et envoie une invitation à usage unique. Le mot de
+passe n'est jamais choisi par l'administrateur ; l'utilisateur le définit
+dans l'App. L'édition est également présentée en modal ; la liste offre
+recherche, tri et pagination 10/20/50/100, ainsi que le renvoi du mail pour
+un compte actif dont l'adresse n'est pas encore confirmée.
+
+Comme le contrat GET actuel contient au plus 200 lignes, cette pagination
+s'exécute côté client comme dans XCore et ne doit pas être confondue avec
+une pagination serveur complète. CI et CT XT nécessaires avant validation.
