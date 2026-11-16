@@ -270,3 +270,13 @@ adresse reçoit un lien d'invitation App lui permettant de créer le mot de
 passe. Un compte auparavant vérifié conserve son parcours de simple
 reconfirmation d'adresse. Une désactivation n'émet pas d'invitation
 supplémentaire. Les anciens jetons sont purgés pendant la mutation.
+
+
+## Déclaration des permissions au registre ACLs (16/11/2026)
+
+Le module fournit désormais `UsersPermissionProvider` avec le tag
+`symsvel.acls.permission_provider`. Le catalogue expose uniquement les
+actions BO réelles, sans duplications dans le Core ou dans ACLs. Le runtime
+conserve les contrôles `BoAccessGate` déjà en place ; la déclaration
+n'accorde aucun droit automatiquement. Pas de migration ni de changement
+sur les routes. CI et CT XT requis.

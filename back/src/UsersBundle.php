@@ -7,6 +7,7 @@ namespace SymSvel\Module\Users;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+use SymSvel\Module\Users\Permission\UsersPermissionProvider;
 use SymSvel\Module\Users\Controller\UsersPingController;
 use Symfony\Component\DependencyInjection\Reference;
 use SymSvel\Module\Users\Controller\UserRegistrationController;
@@ -24,6 +25,8 @@ final class UsersBundle extends AbstractBundle
         $builder->register(UsersPingController::class, UsersPingController::class)
             ->setAutowired(true)
             ->addTag('controller.service_arguments');
+        $builder->register(UsersPermissionProvider::class, UsersPermissionProvider::class)
+            ->addTag('symsvel.acls.permission_provider');
         $builder->register(UserIdentityProvider::class, UserIdentityProvider::class)
             ->setAutowired(true)->addTag('symsvel.auth.identity_provider');
         $builder->register(UserRegistration::class, UserRegistration::class)
