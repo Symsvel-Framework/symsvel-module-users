@@ -3,6 +3,7 @@
   import { api } from '../../../../api/client';
   import { uiLanguage } from '../../../../api/locales';
   import { registrationCopy, validRegistrationPassword } from '../../registration';
+  import { passwordStrength } from '../../../../password/strength';
 
   let email = $state('');
   let password = $state('');
@@ -12,6 +13,7 @@
   let error = $state('');
   const language = $derived($uiLanguage ?? (typeof navigator === 'undefined' ? 'en' : navigator.language));
   const t = $derived(registrationCopy(language));
+  const strength = $derived(passwordStrength(password));
 
   async function register(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -63,13 +65,21 @@
         <label for="register-email">{t.email}</label>
         <input id="register-email" type="email" autocomplete="email" bind:value={email} maxlength="254" required />
         <label for="register-password">{t.password}</label>
-        <input id="register-password" type="password" autocomplete="new-password" bind:value={password} minlength="12" maxlength="1024" required />
+        <input id="register-password" type="password" autocomplete="new-password" bind:value={password} maxlength="1024" required />
         <small>{t.passwordHint}</small>
+        <meter min="0" max="4" value={strength.score} aria-label={t.strength} />
+        <small aria-live="polite">{t.strength}: {t.strengthLevels[strength.score]}</small>
+        <small>{t.strengthHint}</small>
         <label for="register-confirmation">{t.confirmation}</label>
-        <input id="register-confirmation" type="password" autocomplete="new-password" bind:value={confirmation} minlength="12" maxlength="1024" required />
+        <input id="register-confirmation" type="password" autocomplete="new-password" bind:value={confirmation} maxlength="1024" required />
         <button type="submit" disabled={busy}>{busy ? t.pending : t.submit}</button>
       </form>
       <p><a href={resolve('/login')}>{t.signIn}</a></p>
     {/if}
   </section>
 </main>
+
+<style>
+  meter { display: block; width: 100%; height: 13px; }
+  small { color: #667085; }
+</style>

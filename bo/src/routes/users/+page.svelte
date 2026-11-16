@@ -6,6 +6,7 @@
   import { uiLanguage } from '../../../../api/locales';
   import { boApi, currentBo } from '../../../../api/session';
   import { boUsersCopy, validBoUserPassword, type BoUser, type BoUsersResponse } from '../../bo';
+  import { passwordStrength } from '../../../../password/strength';
 
   let ready = $state(false);
   let loading = $state(false);
@@ -22,6 +23,7 @@
   let message = $state('');
   const language = $derived($uiLanguage ?? (typeof navigator === 'undefined' ? 'en' : navigator.language));
   const t = $derived(boUsersCopy(language));
+  const strength = $derived(passwordStrength(password));
   const locale = $derived(language.toLowerCase().startsWith('fr') ? 'fr' : 'en');
 
   function explain(cause: unknown): string {
@@ -161,11 +163,14 @@
             <input id="user-email" type="email" bind:value={email} maxlength="254" autocomplete="off" required />
             <label for="user-password">{t.password}</label>
             <input id="user-password" type="password" bind:value={password}
-              autocomplete="new-password" minlength="12" maxlength="1024" required />
+              autocomplete="new-password" maxlength="1024" required />
             <small>{t.passwordRule}</small>
+            <meter min="0" max="4" value={strength.score} aria-label={t.strength} />
+            <small aria-live="polite">{t.strength}: {t.strengthLevels[strength.score]}</small>
+            <small>{t.strengthHint}</small>
             <label for="user-password-confirm">{t.confirmPassword}</label>
             <input id="user-password-confirm" type="password" bind:value={confirmation}
-              autocomplete="new-password" minlength="12" maxlength="1024" required />
+              autocomplete="new-password" maxlength="1024" required />
             <button type="submit" disabled={busy}>{busy ? t.creating : t.create}</button>
           </form>
         </section>
@@ -233,6 +238,7 @@
   .panel { background: white; border: 1px solid #e2e7ee; border-radius: 14px; padding: 28px; }
   h1, h2 { margin-top: 0; }
   p, small { color: #667085; }
+  meter { display: block; width: 100%; height: 13px; }
   .create-form { display: grid; grid-template-columns: minmax(160px, 1fr); gap: 10px; max-width: 500px; }
   label { font-weight: 650; }
   input, select { padding: 12px; border: 1px solid #ccd4df; border-radius: 8px; font: inherit; }

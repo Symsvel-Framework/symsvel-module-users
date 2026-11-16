@@ -149,3 +149,7 @@ Les éventuels rôles Users/App restent hors de ce CRUD (aucun rôle User dédi�
 ### Écran BO Users (16/11/2026)
 
 La route BO `/users` consomme la nouvelle API via `boApi` et contrôle `currentBo` avant affichage. Elle fournit la création avec mot de passe initial, la liste, l'édition de l'adresse ou du statut, et la suppression confirmée. Les nouveaux comptes restent non vérifiés et l'UI indique les échecs d'envoi de confirmation, sans exposer d'exception SMTP. La limite du mot de passe est de 12 à 1024 octets et aucune session App n'est créée par le BO. Les textes sont externalisés en FR/EN avec tests Vitest dans `bo/tests/users.test.ts` ; CI d'assemblage et CT local requis.
+
+### Indicateur de mot de passe sur App Register et BO Users (16/11/2026)
+
+Les formulaires de création importent `passwordStrength()` depuis les clients App et BO natifs, affichent un indicateur progressif et les limites exactes validées par le serveur (12 à 1024 octets UTF-8, pas de NUL). Le score indique la diversité, sans imposer une nouvelle règle de composition. Les messages sont traduits dans les modules, et les contrôles finaux existants restent appliqués avant POST. L'attribut HTML `minlength=12` a été retiré car il comptait les caractères JS et rejetait certains mots de passe Unicode pourtant valides en octets. CI assemblées et CT navigateur requis.
