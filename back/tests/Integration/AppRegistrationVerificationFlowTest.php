@@ -46,6 +46,7 @@ use SymSvel\Module\Auth\Token\RefreshTokenGuard;
 use SymSvel\Module\Auth\Token\TokenFactory;
 use SymSvel\Module\Auth\Token\TokenIssuer;
 use SymSvel\Module\Auth\Token\TokenRotation;
+use SymSvel\Module\Languages\Service\LanguageCatalog;
 use SymSvel\Module\Mails\Mail\ConfiguredMailSender;
 use SymSvel\Module\Mails\Mail\MailSender;
 use SymSvel\Module\Mails\Mail\MailTemplateRegistry;
@@ -146,7 +147,12 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             new ContextEmailVerificationIdentity([$owner]), new DbalEmailVerificationStore($db),
             $renderer, new ConfiguredMailSender(new MailSender($mailer), $settingManager),
         );
-        $register = new UserRegistrationController(new UserRegistration($db, $limiter), $dispatch, $logger);
+        $db->executeStatement('CREATE TABLE symsvel_languages (iso_code VARCHAR(4) PRIMARY KEY, name VARCHAR(100), active BOOLEAN, pre_open BOOLEAN)');
+        $db->insert('symsvel_languages', ['iso_code' => 'fr', 'name' => 'Français', 'active' => true, 'pre_open' => false]);
+        $languageSettings = $this->createMock(SettingManager::class);
+        $languageSettings->method('get')->with('languages.primary_language')->willReturn('fr');
+        $register = new UserRegistrationController(new UserRegistration($db, $limiter), $dispatch, $logger,
+            new LanguageCatalog($db, $languageSettings));
         $verify = new AppEmailVerificationController(
             $dispatch, new EmailVerificationCompletion(
                 $db, new DbalEmailVerificationStore($db),
@@ -180,6 +186,7 @@ final class AppRegistrationVerificationFlowTest extends TestCase
                 'email' => ' person@example.test ', 'password' => 'correct-password-123', 'locale' => 'fr',
             ]));
             self::assertSame(202, $registration->getStatusCode());
+            self::assertSame('fr', $db->fetchOne('SELECT language FROM symsvel_users WHERE email = ?', ['person@example.test']));
             self::assertSame(1, $sent->count());
             self::assertNull($db->fetchOne('SELECT email_verified_at FROM symsvel_users') ?: null);
             self::assertSame(401, $sessions->login(self::request('/apiopen/auth/login', [
