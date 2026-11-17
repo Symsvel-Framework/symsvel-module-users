@@ -37,5 +37,5 @@ const labels = {
 };
 export type RegistrationCopy = (typeof labels)['fr'];
 export function registrationCopy(language: string | null): RegistrationCopy {
-  return language?.toLowerCase().split('-')[0] === 'fr' ? labels.fr : labels.en;
+  return language?.toLowerCase().split('-')[0] === 'en' ? labels.en : labels.fr;
 }
