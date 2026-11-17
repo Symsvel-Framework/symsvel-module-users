@@ -13,6 +13,7 @@ use SymSvel\Module\Acls\Access\BoAccessGate;
 use SymSvel\Module\Auth\Identity\EmailVerificationDispatch;
 use SymSvel\Module\Auth\Identity\AppInvitationDispatch;
 use SymSvel\Module\Users\Service\UserAdministration;
+use SymSvel\Module\Languages\Service\LanguageCatalog;
 
 /** All actions use BO tokens and explicit ACLs; never App credentials. */
 final readonly class BoUsersController
@@ -24,6 +25,7 @@ final readonly class BoUsersController
         private EmailVerificationDispatch $confirmation,
         private AppInvitationDispatch $invitations,
         private LoggerInterface $logger,
+        private LanguageCatalog $languages,
     ) {
     }
 
@@ -34,11 +36,12 @@ final readonly class BoUsersController
             return $error;
         }
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT id, email, enabled, email_verified_at, created_at FROM symsvel_users ORDER BY id DESC LIMIT 200',
+            'SELECT id, email, language, enabled, email_verified_at, created_at FROM symsvel_users ORDER BY id DESC LIMIT 200',
         );
         return self::reply(['data' => array_map(static fn (array $row) => [
             'id' => (int) $row['id'],
             'email' => (string) $row['email'],
+            'language' => $row['language'],
             'enabled' => (bool) $row['enabled'],
             'email_verified' => $row['email_verified_at'] !== null,
             'created_at' => (string) $row['created_at'],
@@ -55,14 +58,16 @@ final readonly class BoUsersController
         if ($body instanceof JsonResponse) {
             return $body;
         }
-        if (array_diff(array_keys($body), ['email', 'locale'])
+        if (array_diff(array_keys($body), ['email', 'locale', 'language'])
             || !is_string($body['email'] ?? null)
+            || (array_key_exists('language', $body) && !is_string($body['language']))
             || !in_array($body['locale'] ?? 'fr', ['fr', 'en'], true)) {
             return self::error(400);
         }
         try {
+            $language = $this->languages->resolveAccountLanguage($body['language'] ?? null);
             $id = $this->users->invite(
-                $body['email'], new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+                $body['email'], new \DateTimeImmutable('now', new \DateTimeZone('UTC')), $language,
             );
         } catch (\InvalidArgumentException) {
             return self::error(400);
@@ -99,18 +104,21 @@ final readonly class BoUsersController
         if ($body instanceof JsonResponse) {
             return $body;
         }
-        if ($body === [] || array_diff(array_keys($body), ['email', 'enabled', 'locale'])
+        if ($body === [] || array_diff(array_keys($body), ['email', 'enabled', 'locale', 'language'])
             || (array_key_exists('email', $body) && !is_string($body['email']))
             || (array_key_exists('enabled', $body) && !is_bool($body['enabled']))
+            || (array_key_exists('language', $body) && !is_string($body['language']))
             || !in_array($body['locale'] ?? 'fr', ['fr', 'en'], true)
-            || (!array_key_exists('email', $body) && !array_key_exists('enabled', $body))) {
+            || (!array_key_exists('email', $body) && !array_key_exists('enabled', $body) && !array_key_exists('language', $body))) {
             return self::error(400);
         }
         // Preserve the invitation flow for a user who has not yet chosen a
         // password. A previously verified user only needs email reconfirmation.
         $awaitingActivation = $this->users->pendingInvitationEmail($id) !== null;
         try {
-            $pendingEmail = $this->users->update($id, $body['email'] ?? null, $body['enabled'] ?? null);
+            $accountLanguage = array_key_exists('language', $body)
+                ? $this->languages->resolveAccountLanguage($body['language']) : null;
+            $pendingEmail = $this->users->update($id, $body['email'] ?? null, $body['enabled'] ?? null, $accountLanguage);
         } catch (\InvalidArgumentException) {
             return self::error(400);
         } catch (\DomainException) {
