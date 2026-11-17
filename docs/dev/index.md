@@ -300,3 +300,9 @@ Vérifications : tests de sélection FR/EN/autres locales et tests de build/CI. 
 Le test d'intégration `AppRegistrationVerificationFlowTest` ne configure plus la clé supprimée `auth.app_reset_url`. Il injecte `AuthPageUrls` avec un domaine de projet explicitement fiable (`example.test`), partagé par les résolveurs des liens de confirmation et de réinitialisation ; la fixture ne crée plus de `project.json` privé temporaire pour produire des URL. Le catalogue Settings réel déclare `languages.primary_language=fr` et `mails.transport=mailpit` avant les parcours ; `LanguageCatalog` consomme ce `SettingManager` réel, qui est `final` et non simulable par PHPUnit. Le parcours continue à vérifier l'URL de confirmation App et le code ISO du compte créé.
 
 Aucun contrat runtime n'est modifié. Les tests automatisés et la CI doivent confirmer cette mise à jour, puis le CT utilisateur validera le parcours complet.
+
+### Correctif Playwright App et jauge HTML (17/11/2026)
+
+Les deux tests `app/tests/registration.e2e.ts` interceptent désormais aussi `GET /apiopen/languages/account-options` et renvoient une unique langue active `en` avec `primary: true`. L'écran masque normalement le sélecteur lorsqu'une seule langue est active, et désactive le bouton tant que le catalogue de langues n'est pas chargé. Sans réponse simulée de cette API, Playwright attendait l'activation du bouton jusqu'au timeout ; la fixture couvre maintenant la dépendance déclarée et vérifie que le POST de création transmet `language: "en"`, distinct de la locale de mail `locale: "en"`. Les règles réelles de validation des langues restent côté PHP.
+
+La jauge de robustesse de l'inscription utilise `<meter></meter>` au lieu d'une balise autofermante, conformément au parseur Svelte 5. Ces corrections sont ciblées sur l'assemblage App et n'ajoutent aucun service de test dans le runtime. Validation CI Playwright et CT navigateur nécessaires.
