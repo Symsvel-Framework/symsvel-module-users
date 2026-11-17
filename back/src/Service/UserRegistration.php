@@ -20,7 +20,7 @@ final readonly class UserRegistration
     ) {
     }
 
-    public function register(string $email, string $password, string $clientIp, \DateTimeImmutable $now): bool
+    public function register(string $email, string $password, string $clientIp, \DateTimeImmutable $now, ?string $language = null): bool
     {
         $email = strtolower(trim($email));
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254
@@ -34,6 +34,7 @@ final readonly class UserRegistration
         try {
             $this->connection->insert('symsvel_users', [
                 'email' => $email,
+                'language' => $language,
                 'password_hash' => password_hash($password, PASSWORD_ARGON2ID),
                 'enabled' => true,
                 'created_at' => $now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.u'),
