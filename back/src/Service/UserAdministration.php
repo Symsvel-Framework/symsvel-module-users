@@ -19,7 +19,7 @@ final readonly class UserAdministration
     }
 
     /** @throws \DomainException when the email already belongs to another user */
-    public function create(string $email, string $password, \DateTimeImmutable $now): int
+    public function create(string $email, string $password, \DateTimeImmutable $now, ?string $language = null): int
     {
         $email = self::email($email);
         if (strlen($password) < 12 || strlen($password) > 1024 || str_contains($password, "\0")) {
@@ -28,6 +28,7 @@ final readonly class UserAdministration
         try {
             $this->connection->insert('symsvel_users', [
                 'email' => $email,
+                'language' => $language,
                 'password_hash' => password_hash($password, PASSWORD_ARGON2ID),
                 'enabled' => true,
                 'email_verified_at' => null,
@@ -48,9 +49,9 @@ final readonly class UserAdministration
      * cryptographically secure random value and is never returned to the caller.
      * Only the emailed single-use activation token can set a usable password.
      */
-    public function invite(string $email, \DateTimeImmutable $now): int
+    public function invite(string $email, \DateTimeImmutable $now, ?string $language = null): int
     {
-        return $this->create($email, bin2hex(random_bytes(32)), $now);
+        return $this->create($email, bin2hex(random_bytes(32)), $now, $language);
     }
 
     /** Pending addresses may be re-invited by an ACL-authorized BO actor. */
@@ -69,10 +70,10 @@ final readonly class UserAdministration
      * Updates only permitted fields; returns the newly pending email, if any.
      * A changed email always loses its verification stamp and active sessions.
      */
-    public function update(int $id, ?string $email, ?bool $enabled): ?string
+    public function update(int $id, ?string $email, ?bool $enabled, ?string $language = null): ?string
     {
         $row = $id > 0 ? $this->connection->fetchAssociative(
-            'SELECT email, enabled FROM symsvel_users WHERE id = ?', [$id],
+            'SELECT email, enabled, language FROM symsvel_users WHERE id = ?', [$id],
         ) : false;
         if ($row === false) {
             throw new \DomainException('Unknown user.');
@@ -89,6 +90,9 @@ final readonly class UserAdministration
         }
         if ($enabled !== null && $enabled !== (bool) $row['enabled']) {
             $changes['enabled'] = $enabled;
+        }
+        if ($language !== null && $language !== $row['language']) {
+            $changes['language'] = $language;
         }
         if ($changes === []) {
             return null;
