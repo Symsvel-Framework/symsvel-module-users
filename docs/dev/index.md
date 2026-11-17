@@ -280,3 +280,11 @@ actions BO réelles, sans duplications dans le Core ou dans ACLs. Le runtime
 conserve les contrôles `BoAccessGate` déjà en place ; la déclaration
 n'accorde aucun droit automatiquement. Pas de migration ni de changement
 sur les routes. CI et CT XT requis.
+
+## Préférence de langue ISO des comptes (17/11/2026)
+
+L'entité User possède un champ `language` nullable de quatre caractères maximum, normalisé en minuscules et limité aux codes ISO alphabétiques de 2 à 4 lettres. Une migration additive Doctrine Schema (`Version20261117000001`) ajoute cette colonne à `symsvel_users` sans clé étrangère ni association Doctrine vers le catalogue natif Languages. Les comptes existants gardent `NULL` ; l'absence de préférence doit être interprétée par le parcours comme un repli vers la langue principale du site, pas comme un code inventé par migration.
+
+**Contrat fonctionnel à terminer :** les créations et modifications doivent valider le code parmi les langues actives exposées par Languages ; si une seule langue est active, masquer le dropdown et imposer côté serveur la langue principale du site. Avec plusieurs langues actives, afficher le sélecteur et persister le code ISO choisi. Pour le premier administrateur, initialiser depuis la langue du navigateur pendant le Setup, sans lecture préalable du catalogue en BDD. Ne pas confondre `language` (préférence du compte) et `locale` (langue d'envoi d'un e-mail).
+
+**État :** schéma et entité ajoutés, API / écrans / initialisation et tests d'intégration encore à relier, CI et crash-tests non validés. Ne pas considérer ce chantier comme terminé avant validation du parcours complet sur `dev`.
