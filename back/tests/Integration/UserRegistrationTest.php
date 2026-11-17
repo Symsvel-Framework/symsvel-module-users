@@ -19,7 +19,7 @@ final class UserRegistrationTest extends TestCase
             self::markTestSkipped('pdo_sqlite required.');
         }
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $db->executeStatement('CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email VARCHAR(254) UNIQUE, password_hash VARCHAR(255), enabled BOOLEAN, created_at DATETIME, email_verified_at DATETIME NULL)');
+        $db->executeStatement('CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email VARCHAR(254) UNIQUE, language VARCHAR(4) NULL, password_hash VARCHAR(255), enabled BOOLEAN, created_at DATETIME, email_verified_at DATETIME NULL)');
         $schema = new Schema();
         PasswordResetLimitSchema::apply($schema);
         foreach ($schema->toSql($db->getDatabasePlatform()) as $sql) {
