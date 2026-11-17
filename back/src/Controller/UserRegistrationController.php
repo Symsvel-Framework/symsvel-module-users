@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use SymSvel\Module\Auth\Identity\EmailVerificationDispatch;
 use SymSvel\Module\Users\Service\UserRegistration;
+use SymSvel\Module\Languages\Service\LanguageCatalog;
 
 final readonly class UserRegistrationController
 {
@@ -17,6 +18,7 @@ final readonly class UserRegistrationController
         private UserRegistration $users,
         private EmailVerificationDispatch $verification,
         private LoggerInterface $logger,
+        private LanguageCatalog $languages,
     ) {
     }
 
@@ -37,6 +39,7 @@ final readonly class UserRegistrationController
         }
         if (!is_array($data) || array_is_list($data)
             || !is_string($data['email'] ?? null) || !is_string($data['password'] ?? null)
+            || (array_key_exists('language', $data) && !is_string($data['language']))
             || !is_string($data['locale'] ?? 'fr') || !in_array($data['locale'] ?? 'fr', ['fr', 'en'], true)) {
             return self::reply(['error' => ['code' => 'invalid_request']], 400);
         }
@@ -44,9 +47,12 @@ final readonly class UserRegistrationController
         $email = strtolower(trim($data['email']));
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         try {
-            $created = $this->users->register($email, $data['password'], (string) $request->getClientIp(), $now);
+            $language = $this->languages->resolveAccountLanguage($data['language'] ?? null);
+            $created = $this->users->register($email, $data['password'], (string) $request->getClientIp(), $now, $language);
         } catch (\InvalidArgumentException) {
             return self::reply(['error' => ['code' => 'invalid_request']], 400);
+        } catch (\DomainException) {
+            return self::reply(['error' => ['code' => 'unavailable']], 503);
         }
 
         if ($created) {
