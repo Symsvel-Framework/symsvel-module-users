@@ -294,3 +294,9 @@ L'entité User possède un champ `language` nullable de quatre caractères maxim
 Les libellés intégrés de l'interface sont sélectionnés à partir de la langue d'interface (code ISO du navigateur ou du compte). Lorsque la locale n'a pas de dictionnaire intégré, les libellés français sont utilisés ; l'anglais reste disponible explicitement pour `en`. Le fallback ne modifie ni la langue ISO du site ni celle du compte et n'impose pas l'existence de traductions avant l'installation. Le repli doit être réalisé à la clé lors de l'introduction des dictionnaires dynamiques ; l'éditeur BO des traductions et le chargement fichier/BDD ne sont pas fournis par cette seule correction.
 
 Vérifications : tests de sélection FR/EN/autres locales et tests de build/CI. La validation finale nécessite les crash-tests locaux sur le parcours Setup, BO et App.
+
+## Alignement du CT App sur Auth/Settings/Languages (17/11/2026)
+
+Le test d'intégration `AppRegistrationVerificationFlowTest` ne configure plus la clé supprimée `auth.app_reset_url`. Il injecte `AuthPageUrls` avec un domaine de projet explicitement fiable (`example.test`), partagé par les résolveurs des liens de confirmation et de réinitialisation ; la fixture ne crée plus de `project.json` privé temporaire pour produire des URL. Le catalogue Settings réel déclare `languages.primary_language=fr` et `mails.transport=mailpit` avant les parcours ; `LanguageCatalog` consomme ce `SettingManager` réel, qui est `final` et non simulable par PHPUnit. Le parcours continue à vérifier l'URL de confirmation App et le code ISO du compte créé.
+
+Aucun contrat runtime n'est modifié. Les tests automatisés et la CI doivent confirmer cette mise à jour, puis le CT utilisateur validera le parcours complet.
