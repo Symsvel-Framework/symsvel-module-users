@@ -46,5 +46,5 @@ const messages = {
 };
 export type BoUsersCopy = (typeof messages)['fr'];
 export function boUsersCopy(language: string | null): BoUsersCopy {
-  return language?.toLowerCase().split('-')[0] === 'fr' ? messages.fr : messages.en;
+  return language?.toLowerCase().split('-')[0] === 'en' ? messages.en : messages.fr;
 }
