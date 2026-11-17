@@ -22,6 +22,10 @@
   let users = $state<BoUser[]>([]);
   let email = $state('');
   let editEmail = $state('');
+  let accountLanguage = $state('');
+  let editLanguage = $state('');
+  let activeLanguages = $state<{ iso_code: string; name: string; primary: boolean }[]>([]);
+  let languagesError = $state('');
   let editEnabled = $state(true);
   let error = $state('');
   let message = $state('');
@@ -34,6 +38,25 @@
   const language = $derived($uiLanguage ?? (typeof navigator === 'undefined' ? 'en' : navigator.language));
   const t = $derived(boUsersCopy(language));
   const locale = $derived(language.toLowerCase().startsWith('fr') ? 'fr' : 'en');
+
+  function selectedLanguage(code: string | null): string {
+    return activeLanguages.length === 1
+      ? (activeLanguages.find((item) => item.primary)?.iso_code ?? activeLanguages[0].iso_code)
+      : (code && activeLanguages.some((item) => item.iso_code === code) ? code
+        : (activeLanguages.find((item) => item.primary)?.iso_code ?? activeLanguages[0]?.iso_code ?? ''));
+  }
+
+  async function loadLanguages(): Promise<void> {
+    languagesError = '';
+    try {
+      const response = await boApi<{ data: { iso_code: string; name: string; primary: boolean }[] }>('/apibo/languages/account-options');
+      activeLanguages = Array.isArray(response.data) ? response.data : [];
+      if (activeLanguages.length === 0) languagesError = t.failure;
+    } catch (cause) {
+      languagesError = explain(cause);
+      activeLanguages = [];
+    }
+  }
 
   const columns = $derived<DataColumn<BoUser>[]>([
     { key: 'email', label: t.email, sortable: true },
@@ -96,10 +119,11 @@
     }
   }
 
-  onMount(() => { void refresh(); });
+  onMount(() => { void refresh(); void loadLanguages(); });
 
   function openCreate(): void {
     email = '';
+    accountLanguage = selectedLanguage(null);
     error = '';
     showCreate = true;
   }
@@ -112,7 +136,7 @@
     busy = true;
     try {
       const result = await boApi<{ id: number; invitation_sent: boolean }>('/apibo/users', {
-        method: 'POST', body: JSON.stringify({ email: email.trim(), locale })
+        method: 'POST', body: JSON.stringify({ email: email.trim(), language: selectedLanguage(accountLanguage), locale })
       });
       showCreate = false;
       message = result.invitation_sent ? t.created : t.created + ' ' + t.mailPending;
@@ -127,6 +151,7 @@
   function edit(user: BoUser): void {
     editing = user;
     editEmail = user.email;
+    editLanguage = selectedLanguage(user.language);
     editEnabled = user.enabled;
     message = '';
     error = '';
@@ -140,7 +165,7 @@
     try {
       const result = await boApi<{ confirmation_sent: boolean | null }>('/apibo/users/' + editing.id, {
         method: 'PATCH',
-        body: JSON.stringify({ email: editEmail.trim(), enabled: editEnabled, locale })
+        body: JSON.stringify({ email: editEmail.trim(), enabled: editEnabled, language: selectedLanguage(editLanguage), locale })
       });
       editing = null;
       message = result.confirmation_sent === false ? t.updated + ' ' + t.mailPending : t.updated;
@@ -221,9 +246,18 @@
     <form class="modal-form" onsubmit={create}>
       <label for="user-email">{t.email}</label>
       <input id="user-email" type="email" bind:value={email} maxlength="254" autocomplete="email" required />
+      {#if activeLanguages.length > 1}
+        <label for="new-user-language">{t.accountLanguage}</label>
+        <select id="new-user-language" bind:value={accountLanguage} required>
+          {#each activeLanguages as item (item.iso_code)}
+            <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
+          {/each}
+        </select>
+      {/if}
+      {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
       <div class="modal-actions">
         <Button type="button" variant="secondary" onclick={() => showCreate = false}>{t.cancel}</Button>
-        <Button type="submit" disabled={busy}>{busy ? t.creating : t.create}</Button>
+        <Button type="submit" disabled={busy || activeLanguages.length === 0}>{busy ? t.creating : t.create}</Button>
       </div>
     </form>
   </Modal>
@@ -234,14 +268,23 @@
       <form class="modal-form" onsubmit={(event) => { event.preventDefault(); void save(); }}>
         <label for="edit-user-email">{t.email}</label>
         <input id="edit-user-email" type="email" bind:value={editEmail} maxlength="254" required />
-        <label for="edit-user-active">{t.state}</label>
+        {#if activeLanguages.length > 1}
+        <label for="edit-user-language">{t.accountLanguage}</label>
+        <select id="edit-user-language" bind:value={editLanguage} required>
+          {#each activeLanguages as item (item.iso_code)}
+            <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
+          {/each}
+        </select>
+      {/if}
+      {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
+      <label for="edit-user-active">{t.state}</label>
         <select id="edit-user-active" bind:value={editEnabled}>
           <option value={true}>{t.enabled}</option>
           <option value={false}>{t.disabled}</option>
         </select>
         <div class="modal-actions">
           <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
-          <Button type="submit" disabled={busy}>{busy ? t.saving : t.save}</Button>
+          <Button type="submit" disabled={busy || activeLanguages.length === 0}>{busy ? t.saving : t.save}</Button>
         </div>
       </form>
     {/if}
