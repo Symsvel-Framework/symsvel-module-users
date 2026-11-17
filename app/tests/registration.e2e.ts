@@ -6,14 +6,20 @@ test('public App registration uses apiopen, no token, and a uniform confirmation
     ++calls;
     expect(route.request().headers()['authorization']).toBeUndefined();
     expect(route.request().postDataJSON()).toEqual({
-      email: 'new@example.test', password: 'long-secure-password', locale: 'en'
+      email: 'new@example.test', password: 'long-secure-password', language: 'en', locale: 'en'
     });
     await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({
       status: 'accepted'
     }) });
   });
 
+  await page.route('**/apiopen/languages/account-options*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      data: [{ iso_code: 'en', name: 'English', primary: true }]
+    }) });
+  });
   await page.goto('/register');
+  await expect(page.getByRole('button', { name: 'Create my account' })).toBeEnabled();
   await page.getByLabel('Email address').fill('new@example.test');
   await page.getByLabel('Password', { exact: true }).fill('long-secure-password');
   await page.getByLabel('Confirm password').fill('long-secure-password');
@@ -29,7 +35,13 @@ test('mismatched passwords never reach the public signup API', async ({ page }) 
     called = true;
     await route.fulfill({ status: 202, contentType: 'application/json', body: '{}' });
   });
+  await page.route('**/apiopen/languages/account-options*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      data: [{ iso_code: 'en', name: 'English', primary: true }]
+    }) });
+  });
   await page.goto('/register');
+  await expect(page.getByRole('button', { name: 'Create my account' })).toBeEnabled();
   await page.getByLabel('Email address').fill('new@example.test');
   await page.getByLabel('Password', { exact: true }).fill('long-secure-password');
   await page.getByLabel('Confirm password').fill('different-password');
