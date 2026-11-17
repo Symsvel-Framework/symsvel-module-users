@@ -11,12 +11,12 @@ final class AccountLanguageMigrationTest extends TestCase
 {
     public function testLanguageColumnIsNullableAndHasNoForeignKey(): void
     {
-        require_once dirname(__DIR__, 3).'/Migration/Version20261117000001.php';
+        require_once dirname(__DIR__, 3).'/Migration/Version20261117000002.php';
         $schema = new Schema();
         $table = $schema->createTable('symsvel_users');
         $table->addColumn('id', 'integer');
         $table->setPrimaryKey(['id']);
-        $migration = (new \ReflectionClass(\DoctrineMigrations\Version20261117000001::class))
+        $migration = (new \ReflectionClass(\DoctrineMigrations\Version20261117000002::class))
             ->newInstanceWithoutConstructor();
         $migration->up($schema);
         self::assertTrue($table->hasColumn('language'));
