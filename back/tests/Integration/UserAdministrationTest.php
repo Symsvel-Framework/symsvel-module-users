@@ -25,7 +25,7 @@ final class UserAdministrationTest extends TestCase
             self::markTestSkipped('pdo_sqlite required.');
         }
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $db->executeStatement('CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email VARCHAR(254) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL, created_at DATETIME NOT NULL)');
+        $db->executeStatement('CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email VARCHAR(254) NOT NULL UNIQUE, language VARCHAR(4) NULL, password_hash VARCHAR(255) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL, created_at DATETIME NOT NULL)');
         $schema = new Schema();
         AuthTokenSchema::apply($schema);
         EmailVerificationSchema::apply($schema);
@@ -59,6 +59,7 @@ final class UserAdministrationTest extends TestCase
         $id = $users->invite(' INVITED@Example.test ', new \DateTimeImmutable('2026-11-16T14:00:00Z'));
         $row = $db->fetchAssociative('SELECT email, enabled, password_hash, email_verified_at FROM symsvel_users WHERE id = ?', [$id]);
         self::assertSame('invited@example.test', $row['email']);
+        self::assertNull($db->fetchOne('SELECT language FROM symsvel_users WHERE id = ?', [$id]));
         self::assertNull($row['email_verified_at']);
         self::assertSame(1, (int) $row['enabled']);
         self::assertSame('argon2id', password_get_info((string) $row['password_hash'])['algoName']);
