@@ -51,6 +51,8 @@
     try {
       const response = await boApi<{ data: { iso_code: string; name: string; primary: boolean }[] }>('/apibo/languages/account-options');
       activeLanguages = Array.isArray(response.data) ? response.data : [];
+      accountLanguage = selectedLanguage(accountLanguage);
+      editLanguage = selectedLanguage(editLanguage);
       if (activeLanguages.length === 0) languagesError = t.failure;
     } catch (cause) {
       languagesError = explain(cause);
