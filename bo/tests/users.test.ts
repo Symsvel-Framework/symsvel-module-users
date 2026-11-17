@@ -7,6 +7,7 @@ describe('BO Users invitation and navigation', () => {
     expect(boUsersCopy('fr-FR').create).toBe('Inviter un utilisateur');
     expect(boUsersCopy('en-US').save).toBe('Save');
     expect(boUsersCopy('fr').inviteIntro).toContain('mot de passe');
+    expect(boUsersCopy('de-DE').create).toBe('Inviter un utilisateur');
   });
 
   it('keeps the BO ACL-protected navigation probe', () => {
