@@ -1,6 +1,7 @@
 export type BoUser = {
   id: number;
   email: string;
+  language: string | null;
   enabled: boolean;
   email_verified: boolean;
   created_at: string;
@@ -11,7 +12,7 @@ const messages = {
   fr: {
     title: 'Utilisateurs', heading: 'Gestion des utilisateurs',
     intro: 'Les comptes créés depuis le BO reçoivent un lien pour choisir leur mot de passe.',
-    email: 'Adresse e-mail', inviteIntro: 'Le destinataire choisira son mot de passe et activera son compte depuis le lien reçu par e-mail.',
+    email: 'Adresse e-mail', accountLanguage: 'Langue du compte', inviteIntro: 'Le destinataire choisira son mot de passe et activera son compte depuis le lien reçu par e-mail.',
     create: 'Inviter un utilisateur', creating: 'Invitation…', list: 'Comptes utilisateurs',
     refresh: 'Actualiser', loading: 'Chargement…', none: 'Aucun utilisateur.',
     enabled: 'Actif', disabled: 'Désactivé', verified: 'Vérifié', unverified: 'Non vérifié',
@@ -28,7 +29,7 @@ const messages = {
   en: {
     title: 'Users', heading: 'Manage users',
     intro: 'Accounts created in BO receive a link to choose their own password.',
-    email: 'Email address', inviteIntro: 'The recipient will choose their password and activate their account using the emailed link.',
+    email: 'Email address', accountLanguage: 'Account language', inviteIntro: 'The recipient will choose their password and activate their account using the emailed link.',
     create: 'Invite user', creating: 'Inviting…', list: 'User accounts',
     refresh: 'Refresh', loading: 'Loading…', none: 'No users.',
     enabled: 'Active', disabled: 'Disabled', verified: 'Verified', unverified: 'Unverified',
