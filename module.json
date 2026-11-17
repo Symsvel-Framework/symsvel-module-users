@@ -2,7 +2,8 @@
     "schema": 1,
     "name": "Users",
     "dependencies": {
-        "acls": "*"
+        "acls": "*",
+        "languages": "*"
     },
     "tables": [
         "symsvel_users"
