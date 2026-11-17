@@ -17,7 +17,7 @@ jobs:
             echo "::error::SYMSVEL_READ_TOKEN is missing. A read-only token for private SymSvel repositories is required."
             exit 1
           fi
-          for repository in symsvel-module-auth symsvel-module-mails symsvel-module-settings; do
+          for repository in symsvel-module-auth symsvel-module-mails symsvel-module-settings symsvel-module-languages; do
             if ! curl --fail --silent --show-error --output /dev/null \
                 --header "Authorization: Bearer $SYMSVEL_READ_TOKEN" \
                 --header "Accept: application/vnd.github+json" \
@@ -33,6 +33,7 @@ jobs:
           composer show symsvel-framework/module-auth
           composer show symsvel-framework/module-mails
           composer show symsvel-framework/module-settings
+          composer show symsvel-framework/module-languages
           php -r 'require "vendor/autoload.php"; if (!interface_exists("SymSvel\\Module\\Auth\\Identity\\PasswordResetIdentity")) { fwrite(STDERR, "Auth PasswordResetIdentity missing from installed dependency\\n"); exit(1); }'
       - run: composer qa
 
