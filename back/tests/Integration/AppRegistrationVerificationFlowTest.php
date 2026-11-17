@@ -34,7 +34,7 @@ use SymSvel\Module\Auth\Schema\AuthTokenSchema;
 use SymSvel\Module\Auth\Schema\EmailVerificationSchema;
 use SymSvel\Module\Auth\Schema\PasswordResetLimitSchema;
 use SymSvel\Module\Auth\Schema\PasswordResetSchema;
-use SymSvel\Module\Auth\Service\AuthSettingDefinitionProvider;
+use SymSvel\Module\Auth\Service\AuthPageUrls;
 use SymSvel\Module\Auth\Service\EmailVerificationUrlResolver;
 use SymSvel\Module\Auth\Service\PasswordResetUrlResolver;
 use SymSvel\Module\Auth\Token\AccessTokenVerifier;
@@ -47,6 +47,7 @@ use SymSvel\Module\Auth\Token\TokenFactory;
 use SymSvel\Module\Auth\Token\TokenIssuer;
 use SymSvel\Module\Auth\Token\TokenRotation;
 use SymSvel\Module\Languages\Service\LanguageCatalog;
+use SymSvel\Module\Languages\Service\LanguagesSettingDefinitionProvider;
 use SymSvel\Module\Mails\Mail\ConfiguredMailSender;
 use SymSvel\Module\Mails\Mail\MailSender;
 use SymSvel\Module\Mails\Mail\MailTemplateRegistry;
@@ -100,15 +101,18 @@ final class AppRegistrationVerificationFlowTest extends TestCase
         $registry = $this->createMock(ManagerRegistry::class);
         $registry->method('getManagerForClass')->with(Setting::class)->willReturn($settingsEm);
         $settings = new SettingRegistry([]);
-        $settings->registerOwned(new AuthSettingDefinitionProvider(), 'auth', new SettingKeyQualifier());
+        $settings->registerOwned(new LanguagesSettingDefinitionProvider(), 'languages', new SettingKeyQualifier());
         $settings->registerOwned(new MailsSettingDefinitionProvider(), 'mails', new SettingKeyQualifier());
         $settingManager = new SettingManager(
             $settings, new SettingRepository($registry), $settingsEm,
             new SettingSecretCipher('integration-secret-for-users'),
         );
-        $settingManager->set('auth.app_reset_url', 'https://app.example.test/reset-password');
+        $settingManager->set('languages.primary_language', 'fr');
+        $settingManager->set('mails.transport', 'mailpit');
         $settingManager->set('mails.sender_email', 'sender@example.test');
         $settingManager->flush();
+        // Setup-published domain, not an obsolete editable Auth setting or private project.json.
+        $authPages = new AuthPageUrls('prod', 'example.test');
 
         $sent = new \ArrayObject();
         $mailFailure = false;
@@ -136,23 +140,16 @@ final class AppRegistrationVerificationFlowTest extends TestCase
         );
         $owner = new UserPasswordResetIdentity($db);
         $limiter = new PasswordResetLimiter($db, 'integration-secret-for-limits');
-        $workspace = sys_get_temp_dir().'/symsvel-users-auth-domain-'.bin2hex(random_bytes(8));
-        mkdir($workspace.'/.symsvel', 0700, true);
-        mkdir($workspace.'/backend', 0700);
-        $projectMetadata = $workspace.'/.symsvel/project.json';
-        file_put_contents($projectMetadata, '{"schema":1,"local_domain":"example.test"}');
         $dispatch = new EmailVerificationDispatch(
-            $limiter, new EmailVerificationUrlResolver($settingManager, $workspace.'/backend'),
+            $limiter, new EmailVerificationUrlResolver($authPages),
             new ContextPasswordResetIdentity([$owner]),
             new ContextEmailVerificationIdentity([$owner]), new DbalEmailVerificationStore($db),
             $renderer, new ConfiguredMailSender(new MailSender($mailer), $settingManager),
         );
         $db->executeStatement('CREATE TABLE symsvel_languages (iso_code VARCHAR(4) PRIMARY KEY, name VARCHAR(100), active BOOLEAN, pre_open BOOLEAN)');
         $db->insert('symsvel_languages', ['iso_code' => 'fr', 'name' => 'Français', 'active' => true, 'pre_open' => false]);
-        $languageSettings = $this->createMock(SettingManager::class);
-        $languageSettings->method('get')->with('languages.primary_language')->willReturn('fr');
         $register = new UserRegistrationController(new UserRegistration($db, $limiter), $dispatch, $logger,
-            new LanguageCatalog($db, $languageSettings));
+            new LanguageCatalog($db, $settingManager));
         $verify = new AppEmailVerificationController(
             $dispatch, new EmailVerificationCompletion(
                 $db, new DbalEmailVerificationStore($db),
@@ -162,7 +159,7 @@ final class AppRegistrationVerificationFlowTest extends TestCase
         );
         $reset = new AppPasswordResetController(
             new PasswordResetDispatch(
-                $limiter, new PasswordResetUrlResolver($settingManager),
+                $limiter, new PasswordResetUrlResolver($authPages),
                 new ContextPasswordResetIdentity([$owner]), new DbalPasswordResetStore($db),
                 $renderer, new ConfiguredMailSender(new MailSender($mailer), $settingManager),
             ),
@@ -196,6 +193,7 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             $message = $sent[0];
             self::assertInstanceOf(Email::class, $message);
             self::assertSame('person@example.test', $message->getTo()[0]->getAddress());
+            self::assertStringContainsString('https://app.example.test/verify-email?token=', (string) $message->getTextBody());
             self::assertSame(1, preg_match('~https://app\\.example\\.test/verify-email\\?token=([A-Za-z0-9_-]{43})~', (string) $message->getTextBody(), $matches));
             $raw = $matches[1];
             self::assertSame(200, $verify->complete(self::request('/apiopen/auth/email-verification/complete', [
@@ -278,10 +276,6 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             $settingsEm->close();
             $db->close();
             $settingsDb->close();
-            @unlink($projectMetadata);
-            rmdir($workspace.'/backend');
-            rmdir($workspace.'/.symsvel');
-            rmdir($workspace);
         }
     }
 
