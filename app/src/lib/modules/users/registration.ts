@@ -1,3 +1,5 @@
+import { generatedTranslation } from '../../i18n/generated-translations';
+
 export function validRegistrationPassword(password: string): boolean {
   const bytes = new TextEncoder().encode(password).length;
   return bytes >= 12 && bytes <= 1024 && !password.includes('\0');
@@ -37,5 +39,10 @@ const labels = {
 };
 export type RegistrationCopy = (typeof labels)['fr'];
 export function registrationCopy(language: string | null): RegistrationCopy {
-  return language?.toLowerCase().split('-')[0] === 'en' ? labels.en : labels.fr;
+  const base = language?.toLowerCase().split('-')[0] === 'en' ? labels.en : labels.fr;
+  return Object.fromEntries(Object.entries(base).map(([key, value]) => [
+    key, Array.isArray(value)
+      ? value.map((entry, index) => generatedTranslation(language, 'app.users.registration.' + key + '.' + index) ?? entry)
+      : generatedTranslation(language, 'app.users.registration.' + key) ?? value
+  ])) as RegistrationCopy;
 }

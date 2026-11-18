@@ -1,3 +1,5 @@
+import { generatedTranslation } from '../../i18n/generated-translations';
+
 export function activationCopy(language: string | null) {
   const fr = {
     title: 'Activer mon compte', intro: 'Choisissez le mot de passe de votre compte.',
@@ -25,7 +27,12 @@ export function activationCopy(language: string | null) {
     busy: 'Activating…', success: 'Your account is active. You can sign in.',
     login: 'Sign in'
   };
-  return language?.toLowerCase().startsWith('fr') ? fr : en;
+  const base = language?.toLowerCase().startsWith('fr') ? fr : en;
+  return Object.fromEntries(Object.entries(base).map(([key, value]) => [
+    key, Array.isArray(value)
+      ? value.map((entry, index) => generatedTranslation(language, 'app.users.activation.' + key + '.' + index) ?? entry)
+      : generatedTranslation(language, 'app.users.activation.' + key) ?? value
+  ])) as typeof fr;
 }
 
 export function validActivationPassword(password: string): boolean {

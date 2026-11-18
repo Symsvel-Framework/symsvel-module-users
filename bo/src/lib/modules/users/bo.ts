@@ -1,3 +1,5 @@
+import { generatedTranslation } from '../../i18n/generated-translations';
+
 export type BoUser = {
   id: number;
   email: string;
@@ -46,5 +48,8 @@ const messages = {
 };
 export type BoUsersCopy = (typeof messages)['fr'];
 export function boUsersCopy(language: string | null): BoUsersCopy {
-  return language?.toLowerCase().split('-')[0] === 'en' ? messages.en : messages.fr;
+  const base = language?.toLowerCase().split('-')[0] === 'en' ? messages.en : messages.fr;
+  return Object.fromEntries(Object.entries(base).map(([key, value]) => [
+    key, generatedTranslation(language, 'bo.users.' + key) ?? value
+  ])) as BoUsersCopy;
 }

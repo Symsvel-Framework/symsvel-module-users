@@ -310,3 +310,8 @@ La jauge de robustesse de l'inscription utilise `<meter></meter>` au lieu d'une 
 ### Réservation de la version de migration Users (17/11/2026)
 
 La migration ajoutant `symsvel_users.language` porte désormais `Version20261117000002`, car `Version20261117000001` était déjà utilisée par Admins pour `symsvel_admins.language`. Le compilateur des migrations de modules écrit toutes les versions dans le répertoire commun `backend/migrations` et ne peut accepter deux classes `DoctrineMigrations` identiques. L'inventaire global des versions réservées est maintenu dans le dépôt Tooling, sous `docs/modules/migration-versions.md`. Cette rectification intervient pendant le cycle de développement sur `dev`, avant validation du CT vierge ; ne pas renommer une migration déjà exécutée et enregistrée dans un projet existant sans procédure de compatibilité spécifique.
+
+
+## Dictionnaires BO/App (18/11/2026)
+
+Users fournit `bo/src/lib/translations/<lang>.ts` et `app/src/lib/translations/<lang>.ts`, comprenant `registration.*` et `activation.*` pour les comptes App. Les clés publiques sont `bo.users.*` et `app.users.*`; les tableaux de robustesse utilisent des feuilles numériques. Tooling effectue la copie et Languages la persistance des défauts après migrations, sans écraser les traductions éditées. Tests, CI et CT XT obligatoires.
