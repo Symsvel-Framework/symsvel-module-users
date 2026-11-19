@@ -47,5 +47,23 @@ export default {
       "3": "Moderate",
       "4": "Strong"
     }
+  },
+  "profile": {
+    "title": "My profile",
+    "intro": "Account information and preferences.",
+    "email": "Email address",
+    "verification": "Email address",
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "language": "Account language",
+    "save": "Save",
+    "busy": "Saving…",
+    "saved": "Account language saved.",
+    "loading": "Loading profile…",
+    "failure": "Unable to load or save the profile.",
+    "session": "Session expired. Sign in again.",
+    "back": "Dashboard",
+    "password": "Reset my password",
+    "readonly": "The email address cannot be changed without verifying the new mailbox."
   }
 } as const;

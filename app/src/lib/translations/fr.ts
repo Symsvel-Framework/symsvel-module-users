@@ -47,5 +47,23 @@ export default {
       "3": "Moyenne",
       "4": "Bonne"
     }
+  },
+  "profile": {
+    "title": "Mon profil",
+    "intro": "Informations de mon compte et préférences.",
+    "email": "Adresse e-mail",
+    "verification": "Adresse e-mail",
+    "verified": "Confirmée",
+    "unverified": "À confirmer",
+    "language": "Langue du compte",
+    "save": "Enregistrer",
+    "busy": "Enregistrement…",
+    "saved": "Langue du compte enregistrée.",
+    "loading": "Chargement du profil…",
+    "failure": "Impossible de charger ou d’enregistrer le profil.",
+    "session": "Session expirée. Reconnectez-vous.",
+    "back": "Tableau de bord",
+    "password": "Réinitialiser mon mot de passe",
+    "readonly": "L’adresse e-mail ne peut pas être modifiée sans confirmation de la nouvelle boîte."
   }
 } as const;

@@ -339,3 +339,22 @@ boîte ; un changement de mot de passe s'appuiera sur le parcours Auth,
 et non sur une mise à jour directe du hash via l'API de profil. La
 page App, les tests HTTP de contexte et les CT utilisateur sont nécessaires
 avant clôture de ce chantier.
+
+## Écran Profil App (19/11/2026)
+
+Le module Users fournit la route Svelte `/profile` dans le scope App.
+L'accès utilise `appApi` (session Auth en mémoire) et ne tente jamais de
+lire les tokens du navigateur depuis le module. Les langues disponibles
+proviennent du catalogue public Languages, et le compte est modifié par
+`PATCH /api/users/profile` sans rechargement de page.
+
+Le profil affiche l'adresse et l'état de vérification en lecture seule,
+avec un lien vers le parcours Auth existant de récupération du mot de
+passe. Aucune modification directe d'adresse ou de hash de mot de passe
+n'est ajoutée. En cas de session expirée, le client retourne à la connexion.
+La route est accessible depuis le dashboard App, sans concevoir un shell
+App définitif avant la validation du BO. Textes déclarés dans
+`app/src/lib/translations/{fr,en}.ts`.
+
+La CI et un CT après assemblage App/Users/Auth/Languages sont exigés,
+notamment pour la politique de session éphémère App lors des navigations.
