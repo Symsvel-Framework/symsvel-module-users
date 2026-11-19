@@ -41,12 +41,15 @@
     loading = true;
     error = '';
     try {
-      const [account, choices] = await Promise.all([
-        appApi<AppSelfProfileResponse>('/api/users/profile'),
-        api<{ data: ProfileLanguage[] }>('/apiopen/languages/account-options', { public: true })
-      ]);
+      const account = await appApi<AppSelfProfileResponse>('/api/users/profile');
       profile = account.data;
-      languages = Array.isArray(choices.data) ? choices.data : [];
+      try {
+        const choices = await api<{ data: ProfileLanguage[] }>('/apiopen/languages/account-options', { public: true });
+        languages = Array.isArray(choices.data) ? choices.data : [];
+      } catch {
+        // The personal account remains accessible if the language catalog is unavailable.
+        languages = [];
+      }
       selected = profile.language ?? languages.find((item) => item.primary)?.iso_code ?? '';
     } catch (cause) {
       error = explain(cause);
@@ -160,9 +163,11 @@
             <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
           {/each}
         </select>
-        <button type="submit" disabled={saving || !selected || selected === profile.language}>
-          {saving ? t.busy : t.save}
-        </button>
+        {#if languages.length > 1}
+          <button type="submit" disabled={saving || !selected || selected === profile.language}>
+            {saving ? t.busy : t.save}
+          </button>
+        {/if}
       </form>
       {#if languages.length < 2}<p>{t.singleLanguage}</p>{/if}
 

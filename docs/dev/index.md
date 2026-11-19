@@ -450,3 +450,13 @@ l'absence de cible administrative arbitraire, la fermeture de la session
 après changement de mot de passe et le nettoyage du jeton de confirmation
 dans l'URL. Les tests de rendu et de délivrance restent à confirmer en
 CI puis sur XT.
+
+### Indépendance du profil et du catalogue Languages (19/11/2026)
+
+Le chargement du compte personnel n'est plus couplé par `Promise.all`
+à la récupération des langues disponibles. Si Languages est indisponible,
+la lecture du profil et les formulaires de modification d'e-mail et de
+mot de passe restent accessibles. Le choix linguistique seul est désactivé,
+et le bouton de sauvegarde des langues n'est pas affiché si aucune
+alternative active n'existe. Ce comportement évite de bloquer toute
+l'identité personnelle pour une simple préférence optionnelle.
