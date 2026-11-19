@@ -85,7 +85,7 @@
       onClick: (row) => { void resend(row.id); }
     },
     {
-      key: 'delete', label: t.delete,
+      key: 'delete', variant: 'danger', label: t.delete,
       disabled: () => deleting !== null,
       onClick: (row) => { void remove(row.id); }
     }
@@ -263,7 +263,7 @@
       {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
       <div class="modal-actions">
         <Button type="button" variant="secondary" onclick={() => showCreate = false}>{t.cancel}</Button>
-        <Button type="submit" disabled={busy || activeLanguages.length === 0 || (activeLanguages.length > 1 && !accountLanguage)}>{busy ? t.creating : t.create}</Button>
+        <Button type="submit" variant="success" disabled={busy || activeLanguages.length === 0 || (activeLanguages.length > 1 && !accountLanguage)}>{busy ? t.creating : t.create}</Button>
       </div>
     </form>
   </Modal>
@@ -288,7 +288,7 @@
           disabled={busy} />
         <div class="modal-actions">
           <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
-          <Button type="submit" disabled={busy || activeLanguages.length === 0 || (activeLanguages.length > 1 && !editLanguage)}>{busy ? t.saving : t.save}</Button>
+          <Button type="submit" variant="success" disabled={busy || activeLanguages.length === 0 || (activeLanguages.length > 1 && !editLanguage)}>{busy ? t.saving : t.save}</Button>
         </div>
       </form>
     {/if}

@@ -460,3 +460,10 @@ mot de passe restent accessibles. Le choix linguistique seul est désactivé,
 et le bouton de sauvegarde des langues n'est pas affiché si aucune
 alternative active n'existe. Ce comportement évite de bloquer toute
 l'identité personnelle pour une simple préférence optionnelle.
+
+### Boutons sémantiques BO (19/11/2026)
+
+Suppression rouge, création et édition validées en vert ; les permissions et les comptes restent inchangés.
+Les variantes sémantiques sont fournies par Button et DataTable dans
+le Design System BO. Le bouton désactivé demeure gris et lisible.
+Contrôle visuel clair/sombre et CI requis.
