@@ -315,3 +315,9 @@ La migration ajoutant `symsvel_users.language` porte désormais `Version20261117
 ## Dictionnaires BO/App (18/11/2026)
 
 Users fournit `bo/src/lib/translations/<lang>.ts` et `app/src/lib/translations/<lang>.ts`, comprenant `registration.*` et `activation.*` pour les comptes App. Les clés publiques sont `bo.users.*` et `app.users.*`; les tableaux de robustesse utilisent des feuilles numériques. Tooling effectue la copie et Languages la persistance des défauts après migrations, sans écraser les traductions éditées. Tests, CI et CT XT obligatoires.
+
+### Design System BO HP, normalisation des écrans Users (19/11/2026)
+
+Le BO Users réutilise `DataTable`, `Pagination`, `Modal`, `Button` et `Alert` du BO hôte. Les choix de langue pour la création et la modification d'un utilisateur, ainsi que l'état actif/inactif, reposent désormais sur le Dropdown commun, avec les options de l'API Languages et les drapeaux explicitement associés par `languageFlag`. La valeur d'état conserve son type booléen (conversion `value === '1'`) avant envoi au backend.
+
+Les surfaces, bordures, formulaires, textes secondaires et focus utilisent les jetons CSS `--bo-*` pour clair/sombre, sans ajouter de thème local. Les invitations et modifications conservent leurs appels API asynchrones, leurs règles métier et ACL, sans rechargement de page. CI d'assemblage du BO et CT XT requis pour la validation fonctionnelle et visuelle.

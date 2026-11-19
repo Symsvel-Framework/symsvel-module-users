@@ -5,6 +5,8 @@
   import Button from '../../../../components/Button.svelte';
   import Alert from '../../../../components/Alert.svelte';
   import Modal from '../../../../components/Modal.svelte';
+  import Dropdown from '../../../../components/Dropdown.svelte';
+  import { languageFlag } from '../../../../components/dropdown';
   import DataTable from '../../../../components/DataTable.svelte';
   import type { DataAction, DataColumn, SortOrder } from '../../../../components/data-table';
   import type { PageSize } from '../../../../components/pagination';
@@ -25,6 +27,10 @@
   let accountLanguage = $state('');
   let editLanguage = $state('');
   let activeLanguages = $state<{ iso_code: string; name: string; primary: boolean }[]>([]);
+  const languageOptions = $derived(activeLanguages.map((item) => ({
+    value: item.iso_code, label: item.name, code: item.iso_code.toUpperCase(), icon: languageFlag(item.iso_code)
+  })));
+
   let languagesError = $state('');
   let editEnabled = $state(true);
   let error = $state('');
@@ -249,12 +255,10 @@
       <label for="user-email">{t.email}</label>
       <input id="user-email" type="email" bind:value={email} maxlength="254" autocomplete="email" required />
       {#if activeLanguages.length > 1}
-        <label for="new-user-language">{t.accountLanguage}</label>
-        <select id="new-user-language" bind:value={accountLanguage} required>
-          {#each activeLanguages as item (item.iso_code)}
-            <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
-          {/each}
-        </select>
+        <span class="field-label">{t.accountLanguage}</span>
+        <Dropdown value={accountLanguage} options={languageOptions}
+          label={t.accountLanguage} onChange={(value) => { accountLanguage = value; }}
+          disabled={busy} />
       {/if}
       {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
       <div class="modal-actions">
@@ -271,19 +275,17 @@
         <label for="edit-user-email">{t.email}</label>
         <input id="edit-user-email" type="email" bind:value={editEmail} maxlength="254" required />
         {#if activeLanguages.length > 1}
-        <label for="edit-user-language">{t.accountLanguage}</label>
-        <select id="edit-user-language" bind:value={editLanguage} required>
-          {#each activeLanguages as item (item.iso_code)}
-            <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
-          {/each}
-        </select>
+        <span class="field-label">{t.accountLanguage}</span>
+        <Dropdown value={editLanguage} options={languageOptions}
+          label={t.accountLanguage} onChange={(value) => { editLanguage = value; }}
+          disabled={busy} />
       {/if}
       {#if languagesError}<Alert kind="error">{languagesError}</Alert>{/if}
-      <label for="edit-user-active">{t.state}</label>
-        <select id="edit-user-active" bind:value={editEnabled}>
-          <option value={true}>{t.enabled}</option>
-          <option value={false}>{t.disabled}</option>
-        </select>
+      <span class="field-label">{t.state}</span>
+        <Dropdown value={editEnabled ? '1' : '0'}
+          options={[{ value: '1', label: t.enabled }, { value: '0', label: t.disabled }]}
+          label={t.state} onChange={(value) => { editEnabled = value === '1'; }}
+          disabled={busy} />
         <div class="modal-actions">
           <Button type="button" variant="secondary" onclick={() => editing = null}>{t.cancel}</Button>
           <Button type="submit" disabled={busy || activeLanguages.length === 0}>{busy ? t.saving : t.save}</Button>
@@ -297,11 +299,13 @@
   .users { max-width: 1200px; margin: auto; display: grid; gap: 20px; }
   .page-heading, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
   .page-heading h1, .section-heading h2 { margin: 0; }
-  .page-heading p, .modal-form p { color: #667085; }
-  .panel { background: white; border: 1px solid #e2e7ee; border-radius: 14px; padding: 24px; min-width: 0; }
+  .page-heading p, .modal-form p { color: var(--bo-muted); }
+  .panel { background: var(--bo-surface); color: var(--bo-text); border: 1px solid var(--bo-border); border-radius: 14px; padding: 24px; min-width: 0; }
   .section-heading { margin-bottom: 18px; }
   .modal-form { display: grid; gap: 10px; margin-top: 16px; }
-  .modal-form label { font-weight: 650; }
-  .modal-form input, .modal-form select { width: 100%; border: 1px solid #ccd4df; border-radius: 8px; padding: 11px; font: inherit; }
+  .modal-form label, .field-label { font-weight: 650; }
+  .field-label { display: block; }
+  .modal-form input { width: 100%; min-width: 0; border: 1px solid var(--bo-border); border-radius: 8px; padding: 11px; font: inherit; background: var(--bo-input); color: var(--bo-text); }
+  .modal-form input:focus-visible { outline: 2px solid var(--bo-focus); outline-offset: 2px; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 </style>
