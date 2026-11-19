@@ -64,6 +64,16 @@ export default {
     "session": "Session expirée. Reconnectez-vous.",
     "back": "Tableau de bord",
     "password": "Réinitialiser mon mot de passe",
-    "readonly": "L’adresse e-mail ne peut pas être modifiée sans confirmation de la nouvelle boîte."
+    "readonly": "L’adresse e-mail ne peut pas être modifiée sans confirmation de la nouvelle boîte.",
+    "passwordTitle": "Changer mon mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "passwordSave": "Modifier mon mot de passe",
+    "passwordInvalid": "Vérifiez le mot de passe actuel et saisissez un nouveau mot de passe différent.",
+    "passwordMismatch": "Les deux nouveaux mots de passe ne correspondent pas.",
+    "passwordLength": "12 caractères minimum.",
+    "passwordSuccess": "Mot de passe modifié. Reconnexion nécessaire.",
+    "singleLanguage": "Une seule langue est disponible pour ce projet."
   }
 } as const;

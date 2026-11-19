@@ -64,6 +64,16 @@ export default {
     "session": "Session expired. Sign in again.",
     "back": "Dashboard",
     "password": "Reset my password",
-    "readonly": "The email address cannot be changed without verifying the new mailbox."
+    "readonly": "The email address cannot be changed without verifying the new mailbox.",
+    "passwordTitle": "Change my password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordSave": "Change my password",
+    "passwordInvalid": "Check your current password and enter a different new password.",
+    "passwordMismatch": "The two new passwords do not match.",
+    "passwordLength": "At least 12 characters.",
+    "passwordSuccess": "Password changed. Sign in again.",
+    "singleLanguage": "Only one language is available for this project."
   }
 } as const;

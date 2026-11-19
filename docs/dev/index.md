@@ -383,3 +383,14 @@ l'opération est annulée sans révoquer les sessions.
 Les restrictions sur la suppression du dernier ROLE_DEV ou administrateur
 ne concernent pas cette opération personnelle. CI et CT de reconnexion
 avec l'ancien / nouveau mot de passe restent requis.
+
+### Formulaire de modification du mot de passe (19/11/2026)
+
+Le profil comporte trois champs : mot de passe actuel, nouveau mot de
+passe et confirmation. Il refuse localement la discordance et impose
+au moins douze caractères. La modification est envoyée à l'API
+personnelle, jamais à l'API de gestion des comptes d'autres personnes.
+Après un succès, l'application ferme la session locale et revient à
+la connexion (les tokens du compte sont révoqués par Auth).
+La préférence linguistique reste disponible sans bloquer les autres
+formulaires lorsque seule la langue principale est active.

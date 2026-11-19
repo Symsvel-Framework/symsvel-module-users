@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { api, ApiError } from '../../../../api/client';
-  import { appApi } from '../../../../api/session';
+  import { appApi, logoutApp } from '../../../../api/session';
   import { uiLanguage } from '../../../../api/locales';
   import {
     appProfileCopy, type AppSelfProfile, type AppSelfProfileResponse, type ProfileLanguage
@@ -12,6 +12,12 @@
   let profile = $state<AppSelfProfile | null>(null);
   let languages = $state<ProfileLanguage[]>([]);
   let selected = $state('');
+  let currentPassword = $state('');
+  let newPassword = $state('');
+  let confirmPassword = $state('');
+  let passwordBusy = $state(false);
+  let passwordError = $state('');
+  let passwordNotice = $state('');
   let loading = $state(true);
   let saving = $state(false);
   let error = $state('');
@@ -63,6 +69,39 @@
       saving = false;
     }
   }
+
+  async function changePassword(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (passwordBusy) return;
+    passwordError = '';
+    passwordNotice = '';
+    if (newPassword !== confirmPassword) {
+      passwordError = t.passwordMismatch;
+      return;
+    }
+    if (newPassword.length < 12 || newPassword.length > 1024 || newPassword === currentPassword) {
+      passwordError = t.passwordLength;
+      return;
+    }
+    passwordBusy = true;
+    try {
+      await appApi<{ status: string }>('/api/users/profile/password', {
+        method: 'POST',
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+      });
+      currentPassword = '';
+      newPassword = '';
+      confirmPassword = '';
+      passwordNotice = t.passwordSuccess;
+      await logoutApp();
+      await goto(resolve('/login'), { replaceState: true });
+    } catch (cause) {
+      passwordError = cause instanceof ApiError && cause.status === 403 ? t.passwordInvalid : explain(cause);
+    } finally {
+      passwordBusy = false;
+    }
+  }
+
 </script>
 
 <svelte:head><title>{t.title} | SymSvel App</title></svelte:head>
@@ -89,8 +128,26 @@
           {saving ? t.busy : t.save}
         </button>
       </form>
-      <p>{t.readonly}</p>
-      <p><a href={resolve('/forgot-password')}>{t.password}</a></p>
+      {#if languages.length < 2}<p>{t.singleLanguage}</p>{/if}
+      <div class="profile-divider"></div>
+      <form class="form" onsubmit={changePassword}>
+        <h2>{t.passwordTitle}</h2>
+        {#if passwordError}<p class="alert" role="alert">{passwordError}</p>{/if}
+        {#if passwordNotice}<p class="success" role="status">{passwordNotice}</p>{/if}
+        <label for="user-password-current">{t.currentPassword}</label>
+        <input id="user-password-current" type="password" autocomplete="current-password" required
+          bind:value={currentPassword} disabled={passwordBusy} />
+        <label for="user-password-next">{t.newPassword}</label>
+        <input id="user-password-next" type="password" autocomplete="new-password" minlength="12" maxlength="1024"
+          bind:value={newPassword} required disabled={passwordBusy} />
+        <label for="user-password-confirm">{t.confirmPassword}</label>
+        <input id="user-password-confirm" type="password" autocomplete="new-password" minlength="12" maxlength="1024"
+          bind:value={confirmPassword} required disabled={passwordBusy} />
+        <p>{t.passwordLength}</p>
+        <button type="submit" disabled={passwordBusy || !currentPassword || newPassword.length < 12 || newPassword !== confirmPassword}>
+          {t.passwordSave}
+        </button>
+      </form>
     {/if}
     <p><a href={resolve('/dashboard')}>{t.back}</a></p>
   </section>
@@ -103,5 +160,7 @@
   dt { font-weight: 650; color: #667085; }
   dd { margin: 0; overflow-wrap: anywhere; }
   .form select { width: 100%; padding: 12px; border: 1px solid #ccd4df; border-radius: 9px; font: inherit; }
+  .profile-divider { border-top: 1px solid #d7dce5; margin: 20px 0; }
+  .form input { width: 100%; box-sizing: border-box; }
   .success { padding: 11px 13px; background: #edf9f2; color: #166243; border-radius: 9px; }
 </style>
