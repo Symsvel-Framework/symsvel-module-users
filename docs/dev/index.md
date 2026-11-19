@@ -414,3 +414,21 @@ admin concernent la suppression, jamais le changement d'email personnel.
 La migration jeton appartient au module Auth, pas aux tables Admins/Users.
 L'écran doit suivre le lien reçu, puis obliger une reconnexion.
 CI, tests de changement d'adresse concurrent, multi-SGBD et CT XT requis.
+
+### Formulaire de changement d'adresse et confirmation (19/11/2026)
+
+Depuis le profil, l'utilisateur saisit la nouvelle adresse et son mot
+de passe actuel. Un POST authentifié vers
+`/api/users/profile/email-change`
+déclenche l'envoi du lien à la nouvelle boîte, sans changer l'ancienne
+adresse. La page publique Svelte `/verify-email-change` consomme le
+jeton Auth de contexte App ; elle retire immédiatement le
+secret de l'URL via `history.replaceState`, utilise une requête publique
+sans credentials, puis invite à une nouvelle connexion. La politique
+`Referrer-Policy` de la page interdit toute fuite via Referer.
+
+L'écran utilise le Design System du scope, les dictionnaires des modules
+et affiche les erreurs d'envoi, d'identifiants ou de lien expiré. L'envoi
+de mail exige un transport Mails configuré ; aucune réponse HTTP 202
+ne doit être considérée comme preuve de délivrabilité. CT XT avec Mailpit
+et confirmation sur le domaine réel requis.

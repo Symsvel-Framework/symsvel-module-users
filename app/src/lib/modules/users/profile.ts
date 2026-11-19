@@ -30,7 +30,20 @@ const copy = {
     "passwordMismatch": "Les deux nouveaux mots de passe ne correspondent pas.",
     "passwordLength": "12 caractères minimum.",
     "passwordSuccess": "Mot de passe modifié. Reconnexion nécessaire.",
-    "singleLanguage": "Une seule langue est disponible pour ce projet."
+    "singleLanguage": "Une seule langue est disponible pour ce projet.",
+    "emailChangeTitle": "Changer mon adresse e-mail",
+    "newEmail": "Nouvelle adresse e-mail",
+    "emailCurrentPassword": "Mot de passe actuel",
+    "sendEmailConfirmation": "Envoyer le lien de confirmation",
+    "emailSent": "Un lien de confirmation a été envoyé à la nouvelle adresse. L'adresse actuelle reste active jusqu'à validation.",
+    "emailChangeInvalid": "Vérifiez l'adresse et le mot de passe actuel, puis réessayez.",
+    "emailChangeUnavailable": "Impossible d'envoyer le lien pour le moment. Vérifiez les paramètres Mails.",
+    "emailChangeHelp": "Votre ancienne adresse reste active jusqu'à la confirmation de la nouvelle.",
+    "emailVerificationTitle": "Confirmer la nouvelle adresse",
+    "emailVerificationBusy": "Confirmation en cours…",
+    "emailVerificationSuccess": "Nouvelle adresse confirmée. Reconnectez-vous avec celle-ci.",
+    "emailVerificationFailed": "Lien invalide, expiré ou déjà utilisé.",
+    "backToLogin": "Revenir à la connexion"
   },
   "en": {
     "title": "My profile",
@@ -58,7 +71,20 @@ const copy = {
     "passwordMismatch": "The two new passwords do not match.",
     "passwordLength": "At least 12 characters.",
     "passwordSuccess": "Password changed. Sign in again.",
-    "singleLanguage": "Only one language is available for this project."
+    "singleLanguage": "Only one language is available for this project.",
+    "emailChangeTitle": "Change my email address",
+    "newEmail": "New email address",
+    "emailCurrentPassword": "Current password",
+    "sendEmailConfirmation": "Send confirmation link",
+    "emailSent": "A confirmation link was sent to the new address. Your current email remains active until you confirm.",
+    "emailChangeInvalid": "Check your email address and current password, then try again.",
+    "emailChangeUnavailable": "Cannot send the confirmation link right now. Check mail settings.",
+    "emailChangeHelp": "Your current email remains active until the new one has been confirmed.",
+    "emailVerificationTitle": "Confirm new email address",
+    "emailVerificationBusy": "Confirming…",
+    "emailVerificationSuccess": "New address confirmed. Sign in again with your new email.",
+    "emailVerificationFailed": "Invalid, expired or already used confirmation link.",
+    "backToLogin": "Back to login"
   }
 };
 export type AppProfileCopy = typeof copy.fr;

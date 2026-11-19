@@ -74,6 +74,19 @@ export default {
     "passwordMismatch": "Les deux nouveaux mots de passe ne correspondent pas.",
     "passwordLength": "12 caractères minimum.",
     "passwordSuccess": "Mot de passe modifié. Reconnexion nécessaire.",
-    "singleLanguage": "Une seule langue est disponible pour ce projet."
+    "singleLanguage": "Une seule langue est disponible pour ce projet.",
+    "emailChangeTitle": "Changer mon adresse e-mail",
+    "newEmail": "Nouvelle adresse e-mail",
+    "emailCurrentPassword": "Mot de passe actuel",
+    "sendEmailConfirmation": "Envoyer le lien de confirmation",
+    "emailSent": "Un lien de confirmation a été envoyé à la nouvelle adresse. L'adresse actuelle reste active jusqu'à validation.",
+    "emailChangeInvalid": "Vérifiez l'adresse et le mot de passe actuel, puis réessayez.",
+    "emailChangeUnavailable": "Impossible d'envoyer le lien pour le moment. Vérifiez les paramètres Mails.",
+    "emailChangeHelp": "Votre ancienne adresse reste active jusqu'à la confirmation de la nouvelle.",
+    "emailVerificationTitle": "Confirmer la nouvelle adresse",
+    "emailVerificationBusy": "Confirmation en cours…",
+    "emailVerificationSuccess": "Nouvelle adresse confirmée. Reconnectez-vous avec celle-ci.",
+    "emailVerificationFailed": "Lien invalide, expiré ou déjà utilisé.",
+    "backToLogin": "Revenir à la connexion"
   }
 } as const;

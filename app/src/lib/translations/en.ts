@@ -74,6 +74,19 @@ export default {
     "passwordMismatch": "The two new passwords do not match.",
     "passwordLength": "At least 12 characters.",
     "passwordSuccess": "Password changed. Sign in again.",
-    "singleLanguage": "Only one language is available for this project."
+    "singleLanguage": "Only one language is available for this project.",
+    "emailChangeTitle": "Change my email address",
+    "newEmail": "New email address",
+    "emailCurrentPassword": "Current password",
+    "sendEmailConfirmation": "Send confirmation link",
+    "emailSent": "A confirmation link was sent to the new address. Your current email remains active until you confirm.",
+    "emailChangeInvalid": "Check your email address and current password, then try again.",
+    "emailChangeUnavailable": "Cannot send the confirmation link right now. Check mail settings.",
+    "emailChangeHelp": "Your current email remains active until the new one has been confirmed.",
+    "emailVerificationTitle": "Confirm new email address",
+    "emailVerificationBusy": "Confirming…",
+    "emailVerificationSuccess": "New address confirmed. Sign in again with your new email.",
+    "emailVerificationFailed": "Invalid, expired or already used confirmation link.",
+    "backToLogin": "Back to login"
   }
 } as const;
