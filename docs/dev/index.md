@@ -366,3 +366,20 @@ Les routes déclarées par attributs Symfony sont vérifiées via
 `Symfony\\Component\\Routing\\Route` et n'exposent donc pas les getters
 des objets du routeur. Correction du test sans changement du contrat
 HTTP ni relâchement des contrôles d'identité.
+
+## Modification de son mot de passe (19/11/2026)
+
+`POST /api/users/profile/password` permet au compte courant de remplacer
+son mot de passe. Le Bearer authentifié détermine le contexte et l'ID ;
+aucun ACL de gestion d'autres comptes n'est exigé, y compris pour ROLE_DEV.
+Le client fournit `current_password` et `new_password` (12 à 1024 caractères)
+avec preuve du mot de passe existant. Les erreurs ne divulguent pas le hash.
+Le nouveau hash Argon2id est écrit par comparaison conditionnelle de
+l'ancien hash, sous transaction `TokenSessionRevoker::revokeWith` avec
+révocation des access/refresh du compte. L'interface doit alors revenir
+à la connexion. Si une mise à jour concurrente invalide l'ancien hash,
+l'opération est annulée sans révoquer les sessions.
+
+Les restrictions sur la suppression du dernier ROLE_DEV ou administrateur
+ne concernent pas cette opération personnelle. CI et CT de reconnexion
+avec l'ancien / nouveau mot de passe restent requis.
