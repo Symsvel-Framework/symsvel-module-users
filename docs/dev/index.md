@@ -432,3 +432,11 @@ et affiche les erreurs d'envoi, d'identifiants ou de lien expiré. L'envoi
 de mail exige un transport Mails configuré ; aucune réponse HTTP 202
 ne doit être considérée comme preuve de délivrabilité. CT XT avec Mailpit
 et confirmation sur le domaine réel requis.
+
+### Test propriétaire d'email (19/11/2026)
+
+`UserProfileEmailOwnerTest` utilise SQLite DBAL pour vérifier qu'un
+changement d'adresse n'accepte ni mauvais contexte Auth ni empreinte
+d'ancien e-mail périmée. Le propriétaire ne modifie que l'identité
+active, vérifiée et ciblée par le jeton. Les propriétés de l'autre
+compte et son adresse demeurent inchangées.
