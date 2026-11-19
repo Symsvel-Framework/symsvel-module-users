@@ -358,3 +358,11 @@ App définitif avant la validation du BO. Textes déclarés dans
 
 La CI et un CT après assemblage App/Users/Auth/Languages sont exigés,
 notamment pour la politique de session éphémère App lors des navigations.
+
+### Test des routes de profil (19/11/2026)
+
+Les routes déclarées par attributs Symfony sont vérifiées via
+`ReflectionAttribute::getArguments()`. Elles ne sont pas des instances
+`Symfony\\Component\\Routing\\Route` et n'exposent donc pas les getters
+des objets du routeur. Correction du test sans changement du contrat
+HTTP ni relâchement des contrôles d'identité.
