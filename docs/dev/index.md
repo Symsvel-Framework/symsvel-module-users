@@ -323,3 +323,19 @@ Le BO Users réutilise `DataTable`, `Pagination`, `Modal`, `Button` et `Alert` d
 Les surfaces, bordures, formulaires, textes secondaires et focus utilisent les jetons CSS `--bo-*` pour clair/sombre, sans ajouter de thème local. Les invitations et modifications conservent leurs appels API asynchrones, leurs règles métier et ACL, sans rechargement de page. CI d'assemblage du BO et CT XT requis pour la validation fonctionnelle et visuelle.
 
 Le Dropdown commun ne fournit pas de validation HTML `required` implicite comme `<select>` : les boutons des formulaires de création/modification conservent explicitement le blocage tant que la langue obligatoire n'est pas choisie (en contexte multilingue). Les contrôles d'entrée serveur restent inchangés.
+
+## Profil personnel App (19/11/2026)
+
+`GET /api/users/profile` renvoie uniquement la fiche du compte lié au
+Bearer Auth de **contexte app** : id, email, langue et confirmation de la
+boîte. `PATCH /api/users/profile` accepte uniquement la langue active
+demandée, validée par Languages. Aucune cible fournie par le navigateur :
+le compte est résolu exclusivement par le token valide. Modifier les
+droits, un ID tiers, l'état actif ou l'email via ce chemin est refusé.
+
+Le profil ne retourne jamais le hash de mot de passe, ni les tokens.
+Le changement d'email doit suivre la confirmation sécurisée de nouvelle
+boîte ; un changement de mot de passe s'appuiera sur le parcours Auth,
+et non sur une mise à jour directe du hash via l'API de profil. La
+page App, les tests HTTP de contexte et les CT utilisateur sont nécessaires
+avant clôture de ce chantier.
