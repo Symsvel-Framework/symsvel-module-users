@@ -394,3 +394,23 @@ Après un succès, l'application ferme la session locale et revient à
 la connexion (les tokens du compte sont révoqués par Auth).
 La préférence linguistique reste disponible sans bloquer les autres
 formulaires lorsque seule la langue principale est active.
+
+## Changement d'e-mail : confirmation du nouveau destinataire (19/11/2026)
+
+La route authentifiée `POST /api/users/profile/email-change`
+accepte le mot de passe actuel, l'adresse demandée et la locale.
+Le compte cible est celui du Bearer, jamais un identifiant de requête.
+Le contrôleur vérifie le mot de passe avant de demander à Auth la
+création d'un jeton de confirmation expédié à la nouvelle adresse.
+**L'adresse actuelle et les sessions restent valides durant l'attente.**
+
+Le propriétaire `UserProfileEmailOwner` valide la consommation en contexte
+`app`, l'ancien e-mail par empreinte SHA-256, le statut actif
+et l'unicité en base avant de remplacer le champ `email`. Auth
+orchestre la transaction atomique, la consommation du lien et la
+révocation des sessions. Les règles du dernier rôle DEV ou dernier
+admin concernent la suppression, jamais le changement d'email personnel.
+
+La migration jeton appartient au module Auth, pas aux tables Admins/Users.
+L'écran doit suivre le lien reçu, puis obliger une reconnexion.
+CI, tests de changement d'adresse concurrent, multi-SGBD et CT XT requis.

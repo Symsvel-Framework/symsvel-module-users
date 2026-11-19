@@ -16,6 +16,7 @@ use SymSvel\Module\Users\Controller\UserProfileController;
 use SymSvel\Module\Users\Service\UserAdministration;
 use SymSvel\Module\Users\Service\UserRegistration;
 use SymSvel\Module\Users\Auth\UserIdentityProvider;
+use SymSvel\Module\Users\Auth\UserProfileEmailOwner;
 use SymSvel\Module\Users\Auth\UserPasswordResetIdentity;
 use SymSvel\Module\Users\Auth\UserInvitationIdentity;
 
@@ -43,6 +44,8 @@ final class UsersBundle extends AbstractBundle
             ->addTag('controller.service_arguments');
         $builder->register(UserInvitationIdentity::class, UserInvitationIdentity::class)
             ->setAutowired(true)->addTag('symsvel.auth.app_invitation_identity');
+        $builder->register(UserProfileEmailOwner::class, UserProfileEmailOwner::class)
+            ->setAutowired(true)->addTag('symsvel.auth.profile_email_owner');
         $builder->register(UserPasswordResetIdentity::class, UserPasswordResetIdentity::class)
             ->setAutowired(true)->addTag('symsvel.auth.password_reset_identity')
             ->addTag('symsvel.auth.email_verification_identity');

@@ -9,6 +9,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
 use SymSvel\Module\Auth\Token\TokenSubject;
+use SymSvel\Module\Auth\Identity\ProfileEmailChangeDispatch;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -25,6 +26,7 @@ final readonly class UserProfileController
         private LanguageCatalog $languages,
         private Connection $db,
         private TokenSessionRevoker $sessionRevoker,
+        private ProfileEmailChangeDispatch $emailChange,
     ) {
     }
 
@@ -118,6 +120,48 @@ final readonly class UserProfileController
         return self::reply(['status' => 'updated']);
     }
 
+
+    /** Stage a new address; it is not applied until the recipient confirms the token. */
+    #[Route('/api/users/profile/email-change', name: 'symsvel_users_profile_email_change', methods: ['POST'], format: 'json')]
+    public function requestEmailChange(Request $request): JsonResponse
+    {
+        $account = $this->self($request);
+        if ($account === null) return self::failure(401);
+        if (!str_starts_with(strtolower($request->headers->get('Content-Type', '')), 'application/json')
+            || strlen($request->getContent()) > 4096) return self::failure(400);
+        try {
+            $data = json_decode($request->getContent(), true, 4, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return self::failure(400);
+        }
+        if (!is_array($data) || array_is_list($data) || count($data) !== 3
+            || !is_string($data['current_password'] ?? null)
+            || strlen($data['current_password']) > 4096
+            || !is_string($data['new_email'] ?? null)
+            || strlen(trim($data['new_email'])) > 254
+            || filter_var(trim($data['new_email']), FILTER_VALIDATE_EMAIL) === false
+            || !in_array($data['locale'] ?? null, ['fr', 'en'], true)) {
+            return self::failure(400);
+        }
+        if (!password_verify($data['current_password'], $account->getPasswordHash())) {
+            return self::failure(403);
+        }
+        try {
+            $dispatched = $this->emailChange->dispatch(
+                new TokenSubject('app', (int) $account->getId()),
+                $account->getEmail(),
+                $data['new_email'],
+                $data['locale'],
+                (string) $request->getClientIp(),
+                new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+            );
+        } catch (\Exception) {
+            return self::failure(503);
+        }
+        return $dispatched ? self::reply(['status' => 'accepted'], 202)
+            : self::reply(['error' => ['code' => 'unavailable']], 429);
+    }
+
     private function self(Request $request): ?User
     {
         if (!preg_match('/^Bearer ([A-Za-z0-9_-]{43})$/D', $request->headers->get('Authorization', ''), $found)) {
@@ -145,7 +189,7 @@ final readonly class UserProfileController
     private static function failure(int $status): JsonResponse
     {
         return self::reply(['error' => ['code' => match ($status) {
-            400 => 'invalid_request', 401 => 'unauthorized', 403 => 'invalid_credentials', 409 => 'unavailable',
+            400 => 'invalid_request', 401 => 'unauthorized', 403 => 'invalid_credentials', 409 => 'unavailable', 503 => 'unavailable',
             default => 'unavailable',
         }]], $status);
     }
