@@ -24,13 +24,17 @@ final class UserProfileControllerTest extends TestCase
 
     public function testProfileRoutesBelongOnlyToAuthenticatedAppArea(): void
     {
-        foreach (['show' => 'GET', 'update' => 'PATCH'] as $method => $verb) {
+        foreach (['show' => ['GET', '/api/users/profile'],
+                  'update' => ['PATCH', '/api/users/profile'],
+                  'changePassword' => ['POST', '/api/users/profile/password'],
+                  'requestEmailChange' => ['POST', '/api/users/profile/email-change']]
+                 as $method => [$verb, $path]) {
             $attributes = (new \ReflectionMethod(UserProfileController::class, $method))
                 ->getAttributes(Route::class);
             self::assertCount(1, $attributes);
             // Attribute metadata is not a Symfony\Component\\Routing\\Route object.
             $arguments = $attributes[0]->getArguments();
-            self::assertSame('/api/users/profile', $arguments[0]);
+            self::assertSame($path, $arguments[0]);
             self::assertSame([$verb], $arguments['methods']);
         }
     }

@@ -440,3 +440,13 @@ changement d'adresse n'accepte ni mauvais contexte Auth ni empreinte
 d'ancien e-mail périmée. Le propriétaire ne modifie que l'identité
 active, vérifiée et ciblée par le jeton. Les propriétés de l'autre
 compte et son adresse demeurent inchangées.
+
+### Couverture des routes et des formulaires profil (19/11/2026)
+
+Les tests reflètent les quatre routes de profil personnel : lecture, langue,
+changement de mot de passe et demande de confirmation d'e-mail.
+Les tests App vérifient la présence des deux formulaires,
+l'absence de cible administrative arbitraire, la fermeture de la session
+après changement de mot de passe et le nettoyage du jeton de confirmation
+dans l'URL. Les tests de rendu et de délivrance restent à confirmer en
+CI puis sur XT.
