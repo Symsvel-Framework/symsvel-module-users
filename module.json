@@ -1,15 +1,17 @@
 {
     "schema": 1,
     "name": "Users",
-    "dependencies": {},
+    "dependencies": {
+        "acls": "*",
+        "languages": "*"
+    },
     "tables": [
         "symsvel_users"
     ],
     "components": {
         "back": "back",
         "bo": "bo",
-        "app": "app",
-        "front": "front"
+        "app": "app"
     },
     "documentation": {
         "dev": "docs/dev"

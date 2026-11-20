@@ -7,7 +7,13 @@
         "php": ">=8.4",
         "symfony/framework-bundle": "^8.1",
         "doctrine/orm": "^3.3",
-        "doctrine/doctrine-bundle": "^3.0"
+        "doctrine/doctrine-bundle": "^3.0",
+        "symsvel-framework/module-auth": "dev-dev",
+        "symsvel-framework/module-mails": "dev-dev",
+        "symsvel-framework/module-settings": "dev-dev",
+        "doctrine/migrations": "^3.9",
+        "symsvel-framework/module-acls": "dev-dev",
+        "symsvel-framework/module-languages": "dev-dev"
     },
     "autoload": {
         "psr-4": {
@@ -23,7 +29,7 @@
         "phpunit/phpunit": "^13.4"
     },
     "scripts": {
-        "test": "phpunit -c back/phpunit.xml.dist",
+        "test": "phpunit -c back/phpunit.xml.dist --display-skipped",
         "qa": [
             "@test"
         ]
@@ -35,5 +41,31 @@
         "branch-alias": {
             "dev-main": "1.0.x-dev"
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-acls.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-auth.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-mails.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-settings.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Symsvel-Framework/symsvel-module-languages.git"
+        },
+        {
+            "type": "composer",
+            "url": "https://packages.xavier-tezza.fr"
+        }
+    ]
 }

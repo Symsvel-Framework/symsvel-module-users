@@ -9,5 +9,119 @@ jobs:
         run: |
           php -v
           php -r 'if (PHP_VERSION_ID < 80400 || PHP_VERSION_ID >= 80500) { exit(1); }'
-      - run: composer install --no-interaction --prefer-dist
+      - name: Install private Composer dependencies
+        env:
+          SYMSVEL_READ_TOKEN: ${{ secrets.SYMSVEL_READ_TOKEN }}
+        run: |
+          if [ -z "$SYMSVEL_READ_TOKEN" ]; then
+            echo "::error::SYMSVEL_READ_TOKEN is missing. A read-only token for private SymSvel repositories is required."
+            exit 1
+          fi
+          for repository in symsvel-module-auth symsvel-module-mails symsvel-module-settings symsvel-module-languages; do
+            if ! curl --fail --silent --show-error --output /dev/null \
+                --header "Authorization: Bearer $SYMSVEL_READ_TOKEN" \
+                --header "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/Symsvel-Framework/$repository"; then
+              echo "::error::SYMSVEL_READ_TOKEN cannot read private repository $repository (check expiry and permissions)."
+              exit 1
+            fi
+          done
+          export COMPOSER_AUTH="$(php -r 'echo json_encode(["github-oauth" => ["github.com" => getenv("SYMSVEL_READ_TOKEN")]], JSON_THROW_ON_ERROR);')"
+          composer install --no-interaction --prefer-dist --no-progress
+      - name: Verify Auth development contract
+        run: |
+          composer show symsvel-framework/module-auth
+          composer show symsvel-framework/module-mails
+          composer show symsvel-framework/module-settings
+          composer show symsvel-framework/module-languages
+          php -r 'require "vendor/autoload.php"; if (!interface_exists("SymSvel\\Module\\Auth\\Identity\\PasswordResetIdentity")) { fwrite(STDERR, "Auth PasswordResetIdentity missing from installed dependency\\n"); exit(1); }'
       - run: composer qa
+
+  app-integration:
+    runs-on: [self-hosted, linux, ARM64, symsvel]
+    steps:
+      - name: Checkout Users module
+        uses: actions/checkout@v4
+      - name: Checkout App host on dev
+        uses: actions/checkout@v4
+        with:
+          repository: Symsvel-Framework/symsvel-app
+          ref: dev
+          path: assembled-app
+          token: ${{ secrets.SYMSVEL_READ_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: assembled-app/package-lock.json
+      - name: Assemble Users routes like Tooling
+        run: |
+          mkdir -p assembled-app/src/lib/modules/users/routes/register
+          mkdir -p assembled-app/src/routes/register
+          cp app/src/lib/modules/users/*.ts assembled-app/src/lib/modules/users/
+          cp app/src/routes/register/+page.svelte assembled-app/src/lib/modules/users/routes/register/+page.svelte
+          cp app/tests/registration.e2e.ts assembled-app/src/routes/registration.e2e.ts
+          cat > assembled-app/src/routes/register/+page.svelte <<'ROUTE'
+          <script lang="ts">
+            import ModulePage from '#lib/modules/users/routes/register/+page.svelte';
+          </script>
+          <ModulePage />
+          ROUTE
+      - name: Install App dependencies
+        working-directory: assembled-app
+        run: npm ci --no-audit --no-fund
+      - name: Match App formatting conventions
+        working-directory: assembled-app
+        run: npm run format
+      - name: Check assembled App
+        working-directory: assembled-app
+        run: |
+          npm run check
+          npm run lint
+          npm run build
+          npx playwright install chromium
+          npm run test:unit -- --run
+          npx playwright test src/routes/registration.e2e.ts
+
+  bo-integration:
+    runs-on: [self-hosted, linux, ARM64, symsvel]
+    steps:
+      - name: Checkout Users module
+        uses: actions/checkout@v4
+      - name: Checkout BO host on dev
+        uses: actions/checkout@v4
+        with:
+          repository: Symsvel-Framework/symsvel-bo
+          ref: dev
+          path: assembled-bo
+          token: ${{ secrets.SYMSVEL_READ_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: assembled-bo/package-lock.json
+      - name: Assemble Users BO route like Tooling
+        run: |
+          mkdir -p assembled-bo/src/lib/modules/users/routes/users
+          mkdir -p assembled-bo/src/routes/users
+          cp bo/src/lib/modules/users/*.ts assembled-bo/src/lib/modules/users/
+          cp bo/src/routes/users/+page.svelte assembled-bo/src/lib/modules/users/routes/users/+page.svelte
+          cat > assembled-bo/src/routes/users/+page.svelte <<'ROUTE'
+          <script lang="ts">
+            import ModulePage from '#lib/modules/users/routes/users/+page.svelte';
+          </script>
+          <ModulePage />
+          ROUTE
+      - name: Install BO dependencies
+        working-directory: assembled-bo
+        run: npm ci --no-audit --no-fund
+      - name: Match BO formatting conventions
+        working-directory: assembled-bo
+        run: npm run format
+      - name: Check assembled BO
+        working-directory: assembled-bo
+        run: |
+          npm run check
+          npm run lint
+          npm run build
+          npm run test:unit -- --run
