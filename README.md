@@ -2,9 +2,12 @@
 
 Module SymSvel (manifest schema 1).
 
-## CI (10/11/2026)
+## Intégration continue GitHub-hosted (22/11/2026)
 
-`.github/workflows/qa.yml` exécute Composer et les tests du module sur le runner Docker ARM64 d'organisation (`self-hosted`, `linux`, `ARM64`, `symsvel`), avec PHP 8.4 préinstallé. La CI GitHub-hosted originale est conservée et désactivée dans `.github/workflows/qa.yml.stub`. Pour revenir aux runners GitHub, restaurer ce `.stub` sous le nom `qa.yml`. Les jobs locaux nécessitent que le Mac et Docker soient disponibles ; runner réservé aux contributions de confiance. Validation finale soumise à une CI verte.
+Le workflow public `.github/workflows/qa.yml` utilise désormais **GitHub-hosted Ubuntu 24.04** au lieu des runners Docker du mainteneur. Les tests PHP 8.4 ainsi que les intégrations BO et App SvelteKit/Node.js 24 restent actifs. Les tests d'interface installent Chromium et ses dépendances système lorsque nécessaire.
+
+Les runners auto-hébergés sont réservés à `symsvel-packages` et `symsvel-recipes`, qui restent privés. Une CI verte ne dispense pas des crash-tests locaux.
+
 
 ## Migration Schema portable
 
