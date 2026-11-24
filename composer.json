@@ -8,12 +8,12 @@
         "symfony/framework-bundle": "^8.1",
         "doctrine/orm": "^3.3",
         "doctrine/doctrine-bundle": "^3.0",
-        "symsvel-framework/module-auth": "dev-dev",
-        "symsvel-framework/module-mails": "dev-dev",
-        "symsvel-framework/module-settings": "dev-dev",
+        "symsvel-framework/module-auth": "^1.1",
+        "symsvel-framework/module-mails": "^1.0",
+        "symsvel-framework/module-settings": "^1.0",
         "doctrine/migrations": "^3.9",
-        "symsvel-framework/module-acls": "dev-dev",
-        "symsvel-framework/module-languages": "dev-dev"
+        "symsvel-framework/module-acls": "^1.0",
+        "symsvel-framework/module-languages": "^1.0"
     },
     "autoload": {
         "psr-4": {
