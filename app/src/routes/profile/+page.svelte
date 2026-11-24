@@ -7,6 +7,8 @@
   import { api, ApiError } from '../../../../api/client';
   import { appApi, logoutApp } from '../../../../api/session';
   import { uiLanguage } from '../../../../api/locales';
+  import { passwordStrength } from '../../../../password/strength';
+  import PasswordFeedback from '../../../../password/PasswordFeedback.svelte';
   import {
     appProfileCopy, type AppSelfProfile, type AppSelfProfileResponse, type ProfileLanguage
   } from '../../profile';
@@ -25,6 +27,7 @@
   let passwordBusy = $state(false);
   let passwordError = $state('');
   let passwordNotice = $state('');
+  const passwordPolicy = $derived(passwordStrength(newPassword));
   let loading = $state(true);
   let saving = $state(false);
   let error = $state('');
@@ -120,8 +123,8 @@
       passwordError = t.passwordMismatch;
       return;
     }
-    if (newPassword.length < 12 || newPassword.length > 1024 || newPassword === currentPassword) {
-      passwordError = t.passwordLength;
+    if (!passwordPolicy.valid || newPassword === currentPassword) {
+      passwordError = newPassword === currentPassword ? t.passwordInvalid : t.passwordLength;
       return;
     }
     passwordBusy = true;
@@ -198,13 +201,13 @@
         <input id="user-password-current" type="password" autocomplete="current-password" required
           bind:value={currentPassword} disabled={passwordBusy} />
         <label for="user-password-next">{t.newPassword}</label>
-        <input id="user-password-next" type="password" autocomplete="new-password" minlength="12" maxlength="1024"
+        <input id="user-password-next" type="password" autocomplete="new-password" maxlength="1024"
           bind:value={newPassword} required disabled={passwordBusy} />
+        <PasswordFeedback password={newPassword} />
         <label for="user-password-confirm">{t.confirmPassword}</label>
-        <input id="user-password-confirm" type="password" autocomplete="new-password" minlength="12" maxlength="1024"
+        <input id="user-password-confirm" type="password" autocomplete="new-password" maxlength="1024"
           bind:value={confirmPassword} required disabled={passwordBusy} />
-        <p>{t.passwordLength}</p>
-        <button type="submit" disabled={passwordBusy || !currentPassword || newPassword.length < 12 || newPassword !== confirmPassword}>
+        <button type="submit" disabled={passwordBusy || !currentPassword || !passwordPolicy.valid || newPassword === currentPassword || newPassword !== confirmPassword}>
           {t.passwordSave}
         </button>
       </form>

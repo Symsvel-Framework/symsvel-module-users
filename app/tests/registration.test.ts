@@ -12,7 +12,7 @@ describe('App registration', () => {
   });
 
   it('checks byte length without allowing embedded NUL', () => {
-    expect(validRegistrationPassword('long-password-123')).toBe(true);
+    expect(validRegistrationPassword('Long-password-123!')).toBe(true);
     expect(validRegistrationPassword('too-short')).toBe(false);
     expect(validRegistrationPassword('A'.repeat(1025))).toBe(false);
     expect(validRegistrationPassword('long-password\0')).toBe(false);

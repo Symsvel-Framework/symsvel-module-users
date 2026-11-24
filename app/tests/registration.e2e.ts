@@ -6,7 +6,7 @@ test('public App registration uses apiopen, no token, and a uniform confirmation
     ++calls;
     expect(route.request().headers()['authorization']).toBeUndefined();
     expect(route.request().postDataJSON()).toEqual({
-      email: 'new@example.test', password: 'long-secure-password', language: 'en', locale: 'en'
+      email: 'new@example.test', password: 'Long-secure-password-1!', language: 'en', locale: 'en'
     });
     await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({
       status: 'accepted'
@@ -21,8 +21,8 @@ test('public App registration uses apiopen, no token, and a uniform confirmation
   await page.goto('/register');
   await expect(page.getByRole('button', { name: 'Create my account' })).toBeEnabled();
   await page.getByLabel('Email address').fill('new@example.test');
-  await page.getByLabel('Password', { exact: true }).fill('long-secure-password');
-  await page.getByLabel('Confirm password').fill('long-secure-password');
+  await page.getByLabel('Password', { exact: true }).fill('Long-secure-password-1!');
+  await page.getByLabel('Confirm password').fill('Long-secure-password-1!');
   await page.getByRole('button', { name: 'Create my account' }).click();
   await expect(page.getByRole('status')).toContainText('confirmation email will be sent');
   expect(calls).toBe(1);
@@ -43,7 +43,7 @@ test('mismatched passwords never reach the public signup API', async ({ page }) 
   await page.goto('/register');
   await expect(page.getByRole('button', { name: 'Create my account' })).toBeEnabled();
   await page.getByLabel('Email address').fill('new@example.test');
-  await page.getByLabel('Password', { exact: true }).fill('long-secure-password');
+  await page.getByLabel('Password', { exact: true }).fill('Long-secure-password-1!');
   await page.getByLabel('Confirm password').fill('different-password');
   await page.getByRole('button', { name: 'Create my account' }).click();
   await expect(page.getByRole('alert')).toContainText('Passwords do not match');

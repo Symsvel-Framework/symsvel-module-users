@@ -28,15 +28,15 @@ final class UserRegistrationTest extends TestCase
         $register = new UserRegistration($db, new PasswordResetLimiter($db, 'a-strong-secret-for-registration'));
         $now = new \DateTimeImmutable('2026-11-16T10:00:00+00:00');
 
-        self::assertTrue($register->register(' New@Example.test ', 'long-password-test', '192.0.2.10', $now));
+        self::assertTrue($register->register(' New@Example.test ', 'Long-password-test-1!', '192.0.2.10', $now));
         $row = $db->fetchAssociative('SELECT email, password_hash, enabled, email_verified_at FROM symsvel_users');
         self::assertSame('new@example.test', $row['email']);
-        self::assertTrue(password_verify('long-password-test', $row['password_hash']));
+        self::assertTrue(password_verify('Long-password-test-1!', $row['password_hash']));
         self::assertNull($row['email_verified_at']);
         self::assertEquals(1, $row['enabled']);
 
-        self::assertFalse($register->register('new@example.test', 'different-password', '192.0.2.11', $now));
-        self::assertFalse($register->register('new@example.test', 'different-password', '192.0.2.11', $now->modify('+5 minutes')));
+        self::assertFalse($register->register('new@example.test', 'Different-password-1!', '192.0.2.11', $now));
+        self::assertFalse($register->register('new@example.test', 'Different-password-1!', '192.0.2.11', $now->modify('+5 minutes')));
         self::assertSame($row['password_hash'], $db->fetchOne('SELECT password_hash FROM symsvel_users'));
         self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
     }

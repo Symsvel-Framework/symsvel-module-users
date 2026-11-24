@@ -6,7 +6,7 @@
   import { api } from '../../../../api/client';
   import { uiLanguage } from '../../../../api/locales';
   import { registrationCopy, validRegistrationPassword } from '../../registration';
-  import { passwordStrength } from '../../../../password/strength';
+  import PasswordFeedback from '../../../../password/PasswordFeedback.svelte';
 
   let email = $state('');
   let password = $state('');
@@ -19,7 +19,6 @@
   let languagesError = $state(false);
   const language = $derived($uiLanguage ?? (typeof navigator === 'undefined' ? 'en' : navigator.language));
   const t = $derived(registrationCopy(language));
-  const strength = $derived(passwordStrength(password));
 
   onMount(() => {
     void (async () => {
@@ -105,10 +104,7 @@
         {#if languagesError}<p class="alert" role="alert">{t.failure}</p>{/if}
         <label for="register-password">{t.password}</label>
         <input id="register-password" type="password" autocomplete="new-password" bind:value={password} maxlength="1024" required />
-        <small>{t.passwordHint}</small>
-        <meter min="0" max="4" value={strength.score} aria-label={t.strength}></meter>
-        <small aria-live="polite">{t.strength}: {t.strengthLevels[strength.score]}</small>
-        <small>{t.strengthHint}</small>
+        <PasswordFeedback {password} />
         <label for="register-confirmation">{t.confirmation}</label>
         <input id="register-confirmation" type="password" autocomplete="new-password" bind:value={confirmation} maxlength="1024" required />
         <button type="submit" disabled={busy || languageOptions.length === 0}>{busy ? t.pending : t.submit}</button>
@@ -118,7 +114,3 @@
   </section>
 </main>
 
-<style>
-  meter { display: block; width: 100%; height: 13px; }
-  small { color: #667085; }
-</style>
