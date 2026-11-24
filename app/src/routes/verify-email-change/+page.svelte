@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getProjectBrand } from '../../lib/branding';
+  import { getProjectBrand } from '../../../../branding';
   const brandName = getProjectBrand();
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
