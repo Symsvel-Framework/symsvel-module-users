@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getProjectBrand } from '../../lib/branding';
+  const brandName = getProjectBrand();
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
@@ -143,7 +145,7 @@
 
 </script>
 
-<svelte:head><title>{t.title} | SymSvel App</title></svelte:head>
+<svelte:head><title>{t.title} | {$brandName} App</title></svelte:head>
 <main class="auth-shell">
   <section class="auth-card profile-card">
     <header><strong>{t.title}</strong><span>App</span></header>

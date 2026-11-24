@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getProjectBrand } from '../../lib/branding';
+  const brandName = getProjectBrand();
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { ApiError, api } from '../../../../api/client';
@@ -50,13 +52,13 @@
 </script>
 
 <svelte:head>
-  <title>{t.title} | SymSvel App</title>
+  <title>{t.title} | {$brandName} App</title>
   <meta name="referrer" content="no-referrer" />
 </svelte:head>
 
 <main class="auth-shell">
   <section class="auth-card">
-    <header><strong>SymSvel</strong><span>App</span></header>
+    <header><strong>{$brandName}</strong><span>App</span></header>
     <h1>{t.title}</h1>
     {#if completed}
       <p role="status">{t.success}</p>

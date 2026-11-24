@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getProjectBrand } from '../../lib/branding';
+  const brandName = getProjectBrand();
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
@@ -221,7 +223,7 @@
   }
 </script>
 
-<svelte:head><title>{t.title} | SymSvel BO</title></svelte:head>
+<svelte:head><title>{t.title} | {$brandName} BO</title></svelte:head>
 <div class="users">
   <header class="page-heading">
     <div><h1>{t.heading}</h1><p>{t.intro}</p></div>

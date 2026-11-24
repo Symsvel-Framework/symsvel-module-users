@@ -467,3 +467,7 @@ Suppression rouge, création et édition validées en vert ; les permissions et 
 Les variantes sémantiques sont fournies par Button et DataTable dans
 le Design System BO. Le bouton désactivé demeure gris et lisible.
 Contrôle visuel clair/sombre et CI requis.
+
+## Branding et sécurité
+
+Les écrans du module lisent le nom public avec `getProjectBrand()` du composant hôte BO/App et affichent `$brandName`. Le layout effectue la requête ; le module ne crée ni état de branding ni requête indépendante. Le nom de repli est géré par l'hôte. L'intégration au composant hôte est vérifiée par la QA ; le CT doit vérifier les en-têtes et titres avec un nom de projet personnalisé. La QA PHP exécute également `composer audit --locked` après installation, sans exclusion d'avis.
