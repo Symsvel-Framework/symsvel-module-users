@@ -34,6 +34,7 @@ jobs:
           done
           export COMPOSER_AUTH="$(php -r 'echo json_encode(["github-oauth" => ["github.com" => getenv("SYMSVEL_READ_TOKEN")]], JSON_THROW_ON_ERROR);')"
           composer install --no-interaction --prefer-dist --no-progress
+          composer audit --locked
       - name: Verify Auth development contract
         run: |
           composer show symsvel-framework/module-auth

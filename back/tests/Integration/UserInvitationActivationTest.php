@@ -44,14 +44,14 @@ final class UserInvitationActivationTest extends TestCase
         $activation = new AppInvitationCompletion($db, $tokens, new AppInvitationOwners([$owner]));
 
         $db->update('symsvel_users', ['email' => 'changed@example.test'], ['id' => $id]);
-        self::assertFalse($activation->complete($token->raw, 'chosen-password-123', $now));
+        self::assertFalse($activation->complete($token->raw, 'Chosen-password-123!', $now));
         self::assertNull($db->fetchOne('SELECT email_verified_at FROM symsvel_users WHERE id = ?', [$id]) ?: null);
 
         $db->update('symsvel_users', ['email' => 'invited@example.test'], ['id' => $id]);
-        self::assertTrue($activation->complete($token->raw, 'chosen-password-123', $now));
-        self::assertFalse($activation->complete($token->raw, 'another-password-123', $now));
+        self::assertTrue($activation->complete($token->raw, 'Chosen-password-123!', $now));
+        self::assertFalse($activation->complete($token->raw, 'Another-password-123!', $now));
         $row = $db->fetchAssociative('SELECT password_hash, email_verified_at FROM symsvel_users WHERE id = ?', [$id]);
-        self::assertTrue(password_verify('chosen-password-123', (string) $row['password_hash']));
+        self::assertTrue(password_verify('Chosen-password-123!', (string) $row['password_hash']));
         self::assertNotNull($row['email_verified_at']);
     }
 }

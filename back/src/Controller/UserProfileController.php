@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SymSvel\Module\Users\Controller;
 
+use SymSvel\Module\Auth\Identity\NewPasswordPolicy;
+
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
@@ -87,8 +89,7 @@ final readonly class UserProfileController
         if (!is_array($data) || array_is_list($data) || count($data) !== 2
             || !is_string($data['current_password'] ?? null)
             || !is_string($data['new_password'] ?? null)
-            || strlen($data['new_password']) < 12 || strlen($data['new_password']) > 1024
-            || str_contains($data['new_password'], "\0")
+            || !NewPasswordPolicy::accepts($data['new_password'])
             || strlen($data['current_password']) > 4096) {
             return self::failure(400);
         }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SymSvel\Module\Users\Service;
 
+use SymSvel\Module\Auth\Identity\NewPasswordPolicy;
+
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use SymSvel\Module\Auth\Identity\PasswordResetLimiter;
@@ -24,7 +26,7 @@ final readonly class UserRegistration
     {
         $email = strtolower(trim($email));
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254
-            || strlen($password) < 12 || strlen($password) > 1024 || str_contains($password, "\0")) {
+            || !NewPasswordPolicy::accepts($password)) {
             throw new \InvalidArgumentException('Invalid registration data.');
         }
         if (!$this->limiter->allowRegistration($email, $clientIp, $now)) {

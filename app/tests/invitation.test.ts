@@ -8,7 +8,7 @@ describe('App invitation activation', () => {
     expect(activationCopy(null).title).toBe('Activate account');
   });
   it('validates password bytes before sending the one-time token', () => {
-    expect(validActivationPassword('long-password-123')).toBe(true);
+    expect(validActivationPassword('Long-password-123!')).toBe(true);
     expect(validActivationPassword('short')).toBe(false);
     expect(validActivationPassword('a'.repeat(1025))).toBe(false);
     expect(validActivationPassword('long-password\0')).toBe(false);

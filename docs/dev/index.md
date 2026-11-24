@@ -467,3 +467,11 @@ Suppression rouge, création et édition validées en vert ; les permissions et 
 Les variantes sémantiques sont fournies par Button et DataTable dans
 le Design System BO. Le bouton désactivé demeure gris et lisible.
 Contrôle visuel clair/sombre et CI requis.
+
+## Branding et sécurité
+
+Les écrans du module lisent le nom public avec `getProjectBrand()` du composant hôte BO/App et affichent `$brandName`. Le layout effectue la requête ; le module ne crée ni état de branding ni requête indépendante. Le nom de repli est géré par l'hôte. L'intégration au composant hôte est vérifiée par la QA ; le CT doit vérifier les en-têtes et titres avec un nom de projet personnalisé. La QA PHP exécute également `composer audit --locked` après installation, sans exclusion d'avis.
+
+## Politique des nouveaux mots de passe
+
+L'inscription App et la modification du mot de passe dans le profil appliquent `Auth\\Identity\\NewPasswordPolicy` avant création ou changement du hash. L'activation par invitation reste validée dans Auth. Les trois écrans utilisent le composant `PasswordFeedback` de l'hôte App et la même fonction `passwordStrength`. Cinq critères réactifs, force indicative, FR/EN ; 12 caractères Unicode minimum, majuscule, minuscule, chiffre et symbole ou ponctuation, plafond de 1024 octets UTF-8, sans NUL. Aucun changement de la vérification des anciens identifiants. Les tests de parcours et CT sont requis avant release.

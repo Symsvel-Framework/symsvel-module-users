@@ -180,14 +180,14 @@ final class AppRegistrationVerificationFlowTest extends TestCase
 
         try {
             $registration = $register(self::request('/apiopen/users/register', [
-                'email' => ' person@example.test ', 'password' => 'correct-password-123', 'locale' => 'fr',
+                'email' => ' person@example.test ', 'password' => 'Correct-password-123!', 'locale' => 'fr',
             ]));
             self::assertSame(202, $registration->getStatusCode());
             self::assertSame('fr', $db->fetchOne('SELECT language FROM symsvel_users WHERE email = ?', ['person@example.test']));
             self::assertSame(1, $sent->count());
             self::assertNull($db->fetchOne('SELECT email_verified_at FROM symsvel_users') ?: null);
             self::assertSame(401, $sessions->login(self::request('/apiopen/auth/login', [
-                'email' => 'person@example.test', 'password' => 'correct-password-123',
+                'email' => 'person@example.test', 'password' => 'Correct-password-123!',
             ]))->getStatusCode());
 
             $message = $sent[0];
@@ -205,7 +205,7 @@ final class AppRegistrationVerificationFlowTest extends TestCase
 
             $em->clear();
             $login = $sessions->login(self::request('/apiopen/auth/login', [
-                'email' => 'person@example.test', 'password' => 'correct-password-123',
+                'email' => 'person@example.test', 'password' => 'Correct-password-123!',
             ]));
             self::assertSame(200, $login->getStatusCode());
             $body = json_decode((string) $login->getContent(), true, 8, JSON_THROW_ON_ERROR);
@@ -227,7 +227,7 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             self::assertSame(401, $sessions->me(self::authorized('/api/auth/me', 'GET', $rotated['access_token']))->getStatusCode());
 
             self::assertSame(202, $register(self::request('/apiopen/users/register', [
-                'email' => 'person@example.test', 'password' => 'other-password-123', 'locale' => 'fr',
+                'email' => 'person@example.test', 'password' => 'Other-password-123!', 'locale' => 'fr',
             ]))->getStatusCode());
             self::assertSame(1, $sent->count());
             self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
@@ -236,7 +236,7 @@ final class AppRegistrationVerificationFlowTest extends TestCase
             // account from an unknown address through an HTTP 500.
             $mailFailure = true;
             $offlineRequest = self::request('/apiopen/users/register', [
-                'email' => 'offline@example.test', 'password' => 'correct-password-456', 'locale' => 'fr',
+                'email' => 'offline@example.test', 'password' => 'Correct-password-456!', 'locale' => 'fr',
             ]);
             $offlineRequest->server->set('REMOTE_ADDR', '192.0.2.90');
             $offline = $register($offlineRequest);
