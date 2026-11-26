@@ -352,8 +352,8 @@ Le profil affiche l'adresse et l'état de vérification en lecture seule,
 avec un lien vers le parcours Auth existant de récupération du mot de
 passe. Aucune modification directe d'adresse ou de hash de mot de passe
 n'est ajoutée. En cas de session expirée, le client retourne à la connexion.
-La route est accessible depuis le dashboard App, sans concevoir un shell
-App définitif avant la validation du BO. Textes déclarés dans
+La route est accessible depuis le dashboard App et conserve le shell
+commun du layout authentifié. Textes déclarés dans
 `app/src/lib/translations/{fr,en}.ts`.
 
 La CI et un CT après assemblage App/Users/Auth/Languages sont exigés,
@@ -475,3 +475,8 @@ Les écrans du module lisent le nom public avec `getProjectBrand()` du composant
 ## Politique des nouveaux mots de passe
 
 L'inscription App et la modification du mot de passe dans le profil appliquent `Auth\\Identity\\NewPasswordPolicy` avant création ou changement du hash. L'activation par invitation reste validée dans Auth. Les trois écrans utilisent le composant `PasswordFeedback` de l'hôte App et la même fonction `passwordStrength`. Cinq critères réactifs, force indicative, FR/EN ; 12 caractères Unicode minimum, majuscule, minuscule, chiffre et symbole ou ponctuation, plafond de 1024 octets UTF-8, sans NUL. Aucun changement de la vérification des anciens identifiants. Les tests de parcours et CT sont requis avant release.
+
+
+## Présentation du profil App
+
+Le profil est rendu dans le shell hôte, sans `auth-shell` imbriqué. Deux panneaux indépendants (compte et adresse, mot de passe) se placent côte à côte ou s’empilent selon la largeur disponible. Le catalogue public `/apiopen/languages` respecte le paramètre `languages.multilingual` ; le formulaire de langue n’apparaît que si plusieurs langues sont proposées. Les règles d’inscription et de confirmation d’adresse restent inchangées.
