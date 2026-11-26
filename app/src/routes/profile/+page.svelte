@@ -49,7 +49,7 @@
       const account = await appApi<AppSelfProfileResponse>('/api/users/profile');
       profile = account.data;
       try {
-        const choices = await api<{ data: ProfileLanguage[] }>('/apiopen/languages/account-options', { public: true });
+        const choices = await api<{ data: ProfileLanguage[] }>('/apiopen/languages', { public: true });
         languages = Array.isArray(choices.data) ? choices.data : [];
       } catch {
         // The personal account remains accessible if the language catalog is unavailable.
@@ -66,7 +66,7 @@
 
   async function save(event: SubmitEvent): Promise<void> {
     event.preventDefault();
-    if (saving || !profile || !languages.some((item) => item.iso_code === selected)) return;
+    if (saving || !profile || languages.length < 2 || !languages.some((item) => item.iso_code === selected)) return;
     saving = true;
     error = '';
     notice = '';
@@ -149,32 +149,32 @@
 </script>
 
 <svelte:head><title>{t.title} | {$brandName} App</title></svelte:head>
-<main class="auth-shell">
-  <section class="auth-card profile-card">
-    <header><strong>{t.title}</strong><span>App</span></header>
+<section class="profile-page">
+    <header><h1>{t.title}</h1></header>
     <p>{t.intro}</p>
     {#if error}<p class="alert" role="alert">{error}</p>{/if}
     {#if notice}<p class="success" role="status">{notice}</p>{/if}
     {#if loading}<p role="status">{t.loading}</p>{/if}
     {#if profile}
+    <div class="profile-grid">
+      <section class="profile-card" data-profile-details>
       <dl>
         <div><dt>{t.email}</dt><dd>{profile.email}</dd></div>
         <div><dt>{t.verification}</dt><dd>{profile.email_verified ? t.verified : t.unverified}</dd></div>
       </dl>
-      <form class="form" onsubmit={save}>
+      {#if languages.length > 1}
+      <form class="form" data-profile-language onsubmit={save}>
         <label for="profile-language">{t.language}</label>
         <select id="profile-language" bind:value={selected} disabled={languages.length < 2 || saving} required>
           {#each languages as item (item.iso_code)}
             <option value={item.iso_code}>{item.name} ({item.iso_code})</option>
           {/each}
         </select>
-        {#if languages.length > 1}
           <button type="submit" disabled={saving || !selected || selected === profile.language}>
             {saving ? t.busy : t.save}
           </button>
-        {/if}
       </form>
-      {#if languages.length < 2}<p>{t.singleLanguage}</p>{/if}
+      {/if}
 
       <div class="profile-divider"></div>
       <form class="form" onsubmit={changeEmail}>
@@ -192,7 +192,8 @@
           {t.sendEmailConfirmation}
         </button>
       </form>
-      <div class="profile-divider"></div>
+      </section>
+      <section class="profile-card" data-profile-password>
       <form class="form" onsubmit={changePassword}>
         <h2>{t.passwordTitle}</h2>
         {#if passwordError}<p class="alert" role="alert">{passwordError}</p>{/if}
@@ -211,13 +212,19 @@
           {t.passwordSave}
         </button>
       </form>
+      </section>
+    </div>
     {/if}
     <p><a href={resolve('/dashboard')}>{t.back}</a></p>
-  </section>
-</main>
+</section>
 
 <style>
-  .profile-card { width: min(100%, 600px); }
+  .profile-page { max-width: 1160px; margin: 0 auto; }
+  .profile-page h1 { margin: 0; }
+  .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items: start; gap: 20px; }
+  .profile-card { min-width: 0; background: #fff; border: 1px solid #e2e7ee; border-radius: 14px; padding: 24px; }
+  .profile-card h2 { font-size: 1.05rem; margin: 0 0 4px; }
+  .profile-card[data-profile-password] .form { margin-top: 0; }
   dl { display: grid; gap: 12px; margin: 22px 0; }
   dl div { display: grid; gap: 3px; }
   dt { font-weight: 650; color: #667085; }
