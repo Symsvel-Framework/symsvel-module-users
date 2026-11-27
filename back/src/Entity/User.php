@@ -28,6 +28,11 @@ class User
     #[ORM\Column(name: 'email_verified_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $emailVerifiedAt = null;
 
+    #[ORM\Column(name: 'last_login', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastLogin = null;
+
+    public function getLastLogin(): ?\DateTimeImmutable { return $this->lastLogin; }
+
     public function __construct(string $email, string $passwordHash)
     {
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254) { throw new \InvalidArgumentException('Invalid user email.'); }

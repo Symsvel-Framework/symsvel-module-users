@@ -16,6 +16,7 @@ use SymSvel\Module\Users\Controller\UserProfileController;
 use SymSvel\Module\Users\Service\UserAdministration;
 use SymSvel\Module\Users\Service\UserRegistration;
 use SymSvel\Module\Users\Auth\UserIdentityProvider;
+use SymSvel\Module\Users\Auth\UserLastLoginListener;
 use SymSvel\Module\Users\Auth\UserProfileEmailOwner;
 use SymSvel\Module\Users\Auth\UserPasswordResetIdentity;
 use SymSvel\Module\Users\Auth\UserInvitationIdentity;
@@ -31,6 +32,9 @@ final class UsersBundle extends AbstractBundle
             ->addTag('symsvel.acls.permission_provider');
         $builder->register(UserIdentityProvider::class, UserIdentityProvider::class)
             ->setAutowired(true)->addTag('symsvel.auth.identity_provider');
+        $builder->register(UserLastLoginListener::class)
+            ->setArgument(0, new Reference('doctrine.dbal.default_connection'))
+            ->addTag('symsvel.auth.session_issued_listener');
         $builder->register(UserRegistration::class, UserRegistration::class)
             ->setAutowired(true)
             ->setArgument('$connection', new Reference('doctrine.dbal.default_connection'));
