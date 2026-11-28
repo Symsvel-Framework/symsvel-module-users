@@ -73,9 +73,9 @@ final readonly class UserAdministration
     public function update(int $id, ?string $email, ?bool $enabled, ?string $language = null): ?string
     {
         $row = $id > 0 ? $this->connection->fetchAssociative(
-            'SELECT email, enabled, language FROM symsvel_users WHERE id = ?', [$id],
+            'SELECT email, enabled, language, anonymized_at FROM symsvel_users WHERE id = ?', [$id],
         ) : false;
-        if ($row === false) {
+        if ($row === false || $row['anonymized_at'] !== null) {
             throw new \DomainException('Unknown user.');
         }
         $changes = [];
@@ -101,7 +101,12 @@ final readonly class UserAdministration
             $this->sessions->revokeWith(
                 new TokenSubject('app', $id), new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
                 function () use ($id, $changes): void {
-                    $this->connection->update('symsvel_users', $changes, ['id' => $id]);
+                    $fields = array_keys($changes);
+                    $assignments = implode(', ', array_map(static fn (string $field): string => $field.' = ?', $fields));
+                    $types = array_map(static fn ($value) => is_bool($value) ? \Doctrine\DBAL\ParameterType::BOOLEAN : ($value === null ? \Doctrine\DBAL\ParameterType::NULL : \Doctrine\DBAL\ParameterType::STRING), array_values($changes));
+                    if ($this->connection->executeStatement('UPDATE symsvel_users SET '.$assignments.' WHERE id = ? AND anonymized_at IS NULL', [...array_values($changes), $id], [...$types, \Doctrine\DBAL\ParameterType::INTEGER]) !== 1) {
+                        throw new \DomainException('User no longer editable.');
+                    }
                     if (array_key_exists('email', $changes)) {
                         // Old mailbox links cannot survive an address change.
                         $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
@@ -118,7 +123,7 @@ final readonly class UserAdministration
 
     public function delete(int $id): void
     {
-        if ($id < 1 || $this->connection->fetchOne('SELECT id FROM symsvel_users WHERE id = ?', [$id]) === false) {
+        if ($id < 1 || $this->connection->fetchOne('SELECT id FROM symsvel_users WHERE id = ? AND anonymized_at IS NULL', [$id]) === false) {
             throw new \DomainException('Unknown user.');
         }
         $this->sessions->revokeWith(
@@ -127,7 +132,9 @@ final readonly class UserAdministration
                 $this->connection->delete('symsvel_auth_email_verification_tokens', ['context' => 'app', 'principal_id' => $id]);
                 $this->connection->delete('symsvel_auth_password_reset_tokens', ['context' => 'app', 'principal_id' => $id]);
                 $this->connection->delete('symsvel_auth_app_invitations', ['principal_id' => $id]);
-                $this->connection->delete('symsvel_users', ['id' => $id]);
+                if ($this->connection->executeStatement('DELETE FROM symsvel_users WHERE id = ? AND anonymized_at IS NULL', [$id]) !== 1) {
+                    throw new \DomainException('User no longer deletable.');
+                }
             },
         );
     }

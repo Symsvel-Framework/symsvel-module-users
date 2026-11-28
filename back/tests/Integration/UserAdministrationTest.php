@@ -12,6 +12,8 @@ use SymSvel\Module\Auth\Schema\AuthTokenSchema;
 use SymSvel\Module\Auth\Schema\AppInvitationSchema;
 use SymSvel\Module\Auth\Schema\EmailVerificationSchema;
 use SymSvel\Module\Auth\Schema\PasswordResetSchema;
+use SymSvel\Module\Auth\Schema\ProfileEmailChangeSchema;
+use SymSvel\Module\Users\Service\UserAnonymization;
 use SymSvel\Module\Auth\Token\DbalTokenStore;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
 use SymSvel\Module\Users\Service\UserAdministration;
@@ -25,12 +27,13 @@ final class UserAdministrationTest extends TestCase
             self::markTestSkipped('pdo_sqlite required.');
         }
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $db->executeStatement('CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email VARCHAR(254) NOT NULL UNIQUE, language VARCHAR(4) NULL, password_hash VARCHAR(255) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL, created_at DATETIME NOT NULL)');
+        $db->executeStatement('CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email VARCHAR(254) NOT NULL UNIQUE, language VARCHAR(4) NULL, password_hash VARCHAR(255) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL, created_at DATETIME NOT NULL, anonymized_at DATETIME NULL, last_login DATETIME NULL)');
         $schema = new Schema();
         AuthTokenSchema::apply($schema);
         EmailVerificationSchema::apply($schema);
         PasswordResetSchema::apply($schema);
         AppInvitationSchema::apply($schema);
+        ProfileEmailChangeSchema::apply($schema);
         foreach ($schema->toSql($db->getDatabasePlatform()) as $sql) {
             $db->executeStatement($sql);
         }
@@ -113,6 +116,38 @@ final class UserAdministrationTest extends TestCase
         self::assertSame('new@example.test', $users->update($id, ' NEW@Example.test ', null));
         self::assertSame('new@example.test', $users->pendingInvitationEmail($id));
         self::assertNull($db->fetchOne('SELECT email_verified_at FROM symsvel_users WHERE id = ?', [$id]));
+    }
+
+    public function testNeutralizationRetainsIdAndPermanentlyBlocksOrdinaryAdministration(): void
+    {
+        [$users, $db] = $this->fixture();
+        $activity = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $id = $users->create('person@example.test', 'correct-password-123', $activity, 'fr');
+        $neutralizer = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)));
+        try {
+            $neutralizer->anonymize($id, 'person@example.test', $activity, $now, static fn () => false);
+            self::fail('Unauthorized neutralization accepted.');
+        } catch (\DomainException) {
+        }
+        self::assertSame('person@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = ?', [$id]));
+        self::assertTrue($neutralizer->anonymize($id, 'person@example.test', $activity, $now, static fn () => true));
+        $row = $db->fetchAssociative('SELECT * FROM symsvel_users WHERE id = ?', [$id]);
+        self::assertMatchesRegularExpression('/^anonymous-'.$id.'-[a-f0-9]{32}@example\.invalid$/D', $row['email']);
+        self::assertSame(0, (int) $row['enabled']);
+        self::assertNull($row['language']);
+        self::assertNull($row['last_login']);
+        self::assertNotNull($row['anonymized_at']);
+        self::assertFalse(password_verify('correct-password-123', $row['password_hash']));
+        foreach ([static fn () => $users->update($id, 'reactivated@example.test', true), static fn () => $users->delete($id)] as $operation) {
+            try {
+                $operation();
+                self::fail('Neutralized identity could be modified.');
+            } catch (\DomainException) {
+            }
+        }
+        self::assertNull($users->pendingInvitationEmail($id));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
     }
 
     public function testInvalidPasswordAndUnknownUserAreRejected(): void

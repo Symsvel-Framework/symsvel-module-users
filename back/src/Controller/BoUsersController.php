@@ -36,7 +36,7 @@ final readonly class BoUsersController
             return $error;
         }
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT id, email, language, enabled, email_verified_at, created_at FROM symsvel_users ORDER BY id DESC LIMIT 200',
+            'SELECT id, email, language, enabled, email_verified_at, created_at, anonymized_at FROM symsvel_users ORDER BY id DESC LIMIT 200',
         );
         return self::reply(['data' => array_map(static fn (array $row) => [
             'id' => (int) $row['id'],
@@ -45,6 +45,7 @@ final readonly class BoUsersController
             'enabled' => (bool) $row['enabled'],
             'email_verified' => $row['email_verified_at'] !== null,
             'created_at' => (string) $row['created_at'],
+            'anonymized_at' => $row['anonymized_at'],
         ], $rows)]);
     }
 

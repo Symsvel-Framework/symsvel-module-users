@@ -33,6 +33,11 @@ class User
 
     public function getLastLogin(): ?\DateTimeImmutable { return $this->lastLogin; }
 
+    #[ORM\Column(name: 'anonymized_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $anonymizedAt = null;
+
+    public function getAnonymizedAt(): ?\DateTimeImmutable { return $this->anonymizedAt; }
+
     public function __construct(string $email, string $passwordHash)
     {
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254) { throw new \InvalidArgumentException('Invalid user email.'); }
@@ -59,6 +64,6 @@ class User
     public function getEmail(): string { return $this->email; }
     public function getEmailVerifiedAt(): ?\DateTimeImmutable { return $this->emailVerifiedAt; }
     public function getPasswordHash(): string { return $this->passwordHash; }
-    public function isEnabled(): bool { return $this->enabled; }
+    public function isEnabled(): bool { return $this->enabled && $this->anonymizedAt === null; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 }
