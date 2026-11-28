@@ -14,8 +14,13 @@ use SymSvel\Module\Users\Controller\UserRegistrationController;
 use SymSvel\Module\Users\Controller\BoUsersController;
 use SymSvel\Module\Users\Controller\UserProfileController;
 use SymSvel\Module\Users\Service\UserAdministration;
+use SymSvel\Module\Users\Service\InactiveUsers;
+use SymSvel\Module\Users\Service\UserAnonymization;
+use SymSvel\Module\Users\Gdpr\UserRetentionOwner;
+use SymSvel\Module\Gdpr\Retention\AccountRetentionOwner;
 use SymSvel\Module\Users\Service\UserRegistration;
 use SymSvel\Module\Users\Auth\UserIdentityProvider;
+use SymSvel\Module\Users\Auth\UserLastLoginListener;
 use SymSvel\Module\Users\Auth\UserProfileEmailOwner;
 use SymSvel\Module\Users\Auth\UserPasswordResetIdentity;
 use SymSvel\Module\Users\Auth\UserInvitationIdentity;
@@ -31,10 +36,19 @@ final class UsersBundle extends AbstractBundle
             ->addTag('symsvel.acls.permission_provider');
         $builder->register(UserIdentityProvider::class, UserIdentityProvider::class)
             ->setAutowired(true)->addTag('symsvel.auth.identity_provider');
+        $builder->register(UserLastLoginListener::class)
+            ->setArgument(0, new Reference('doctrine.dbal.default_connection'))
+            ->addTag('symsvel.auth.session_issued_listener');
         $builder->register(UserRegistration::class, UserRegistration::class)
             ->setAutowired(true)
             ->setArgument('$connection', new Reference('doctrine.dbal.default_connection'));
         $builder->register(UserAdministration::class, UserAdministration::class)->setAutowired(true);
+        $builder->register(InactiveUsers::class)->setAutowired(true);
+        $builder->register(UserAnonymization::class)->setAutowired(true);
+        if (interface_exists(AccountRetentionOwner::class)) {
+            $builder->register(UserRetentionOwner::class)->setAutowired(true)
+                ->addTag('symsvel.gdpr.account_retention_owner');
+        }
         $builder->register(UserProfileController::class, UserProfileController::class)
             ->setAutowired(true)->addTag('controller.service_arguments');
         $builder->register(BoUsersController::class, BoUsersController::class)

@@ -6,6 +6,10 @@ export type ProfileLanguage = { iso_code: string; name: string; primary: boolean
 const copy = {
   "fr": {
     "title": "Mon profil",
+    "detailsTab": "Informations personnelles",
+    "securityTab": "Sécurité",
+    "consentsTab": "Consentements",
+    "privacyPolicy": "Données personnelles et cookies",
     "intro": "Informations de mon compte et préférences.",
     "email": "Adresse e-mail",
     "verification": "Adresse e-mail",
@@ -47,6 +51,10 @@ const copy = {
   },
   "en": {
     "title": "My profile",
+    "detailsTab": "Personal information",
+    "securityTab": "Security",
+    "consentsTab": "Consents",
+    "privacyPolicy": "Personal data and cookies",
     "intro": "Account information and preferences.",
     "email": "Email address",
     "verification": "Email address",

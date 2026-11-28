@@ -28,9 +28,19 @@ class User
     #[ORM\Column(name: 'email_verified_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $emailVerifiedAt = null;
 
+    #[ORM\Column(name: 'last_login', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastLogin = null;
+
+    public function getLastLogin(): ?\DateTimeImmutable { return $this->lastLogin; }
+
+    #[ORM\Column(name: 'anonymized_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $anonymizedAt = null;
+
+    public function getAnonymizedAt(): ?\DateTimeImmutable { return $this->anonymizedAt; }
+
     public function __construct(string $email, string $passwordHash)
     {
-        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254) { throw new \InvalidArgumentException('Invalid user email.'); }
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254 || str_ends_with(strtolower(trim($email)), '@example.invalid')) { throw new \InvalidArgumentException('Invalid user email.'); }
         if (password_get_info($passwordHash)['algoName'] !== 'argon2id') { throw new \InvalidArgumentException('User password must be hashed with Argon2id.'); }
         $this->email = $email;
         $this->passwordHash = $passwordHash;
@@ -41,6 +51,7 @@ class User
 
     public function setLanguage(?string $language): void
     {
+        if ($this->anonymizedAt !== null) throw new \DomainException('Neutralized user cannot be edited.');
         if ($language !== null) {
             $language = strtolower(trim($language));
             if (preg_match('/^[a-z]{2,4}$/D', $language) !== 1) {
@@ -54,6 +65,6 @@ class User
     public function getEmail(): string { return $this->email; }
     public function getEmailVerifiedAt(): ?\DateTimeImmutable { return $this->emailVerifiedAt; }
     public function getPasswordHash(): string { return $this->passwordHash; }
-    public function isEnabled(): bool { return $this->enabled; }
+    public function isEnabled(): bool { return $this->enabled && $this->anonymizedAt === null; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 }

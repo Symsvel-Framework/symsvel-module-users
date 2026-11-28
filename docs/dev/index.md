@@ -1,16 +1,10 @@
 # Users
 
-## Fixtures temporaires du crash-test d'intégration
+## Scopes et routes natives (26/11/2026)
 
-Ce module déclare les scopes `back`, `bo`, `app` et `front` pour le crash-test global `symsvel create-project --components=all --dev`.
+Back, BO et App. Le BO conserve `/users` ; App fournit `/register`, `/activate`, `/profile` et `/verify-email-change`.
 
-- Symfony : `GET /api/users/ping` doit retourner `{"module":"users","status":"ok"}` sans données métier ni authentification propre au controller.
-- SvelteKit : chaque interface fournit `src/routes/users/+page.svelte`, affichant `Page users`. Le synchroniseur copie la source sous `src/lib/modules/users/routes/` et crée le relais `src/routes/users/+page.svelte`.
-- Le code métier et ses contrôles d'accès existants restent inchangés.
-
-Ces pages et endpoints sont des sondes d'intégration, pas des interfaces métier définitives. **Limitation provisoire :** les trois scopes Svelte sont déclarés obligatoires par le manifeste ; cette fixture vise uniquement une installation avec tous les composants, pas les installations partielles.
-
-Validation requise : tests automatisés, CI verte, puis crash-test XT (endpoints HTTP et affichage réel des pages BO/App/Front). La présence des fichiers seule ne suffit pas.
+Les anciennes pages de sondage `Page users` dans App et Front ont été retirées. Tooling retire automatiquement leurs relais et sources générés à la prochaine synchronisation, si leurs empreintes sont intactes. Les endpoints PHP de ping et les contrôles métier restent inchangés.
 
 ## Cohérence ORM et migrations Doctrine (novembre 2026)
 
@@ -352,8 +346,8 @@ Le profil affiche l'adresse et l'état de vérification en lecture seule,
 avec un lien vers le parcours Auth existant de récupération du mot de
 passe. Aucune modification directe d'adresse ou de hash de mot de passe
 n'est ajoutée. En cas de session expirée, le client retourne à la connexion.
-La route est accessible depuis le dashboard App, sans concevoir un shell
-App définitif avant la validation du BO. Textes déclarés dans
+La route est accessible depuis le dashboard App et conserve le shell
+commun du layout authentifié. Textes déclarés dans
 `app/src/lib/translations/{fr,en}.ts`.
 
 La CI et un CT après assemblage App/Users/Auth/Languages sont exigés,
@@ -475,3 +469,42 @@ Les écrans du module lisent le nom public avec `getProjectBrand()` du composant
 ## Politique des nouveaux mots de passe
 
 L'inscription App et la modification du mot de passe dans le profil appliquent `Auth\\Identity\\NewPasswordPolicy` avant création ou changement du hash. L'activation par invitation reste validée dans Auth. Les trois écrans utilisent le composant `PasswordFeedback` de l'hôte App et la même fonction `passwordStrength`. Cinq critères réactifs, force indicative, FR/EN ; 12 caractères Unicode minimum, majuscule, minuscule, chiffre et symbole ou ponctuation, plafond de 1024 octets UTF-8, sans NUL. Aucun changement de la vérification des anciens identifiants. Les tests de parcours et CT sont requis avant release.
+
+
+## Présentation du profil App
+
+Le profil est rendu dans le shell hôte, sans `auth-shell` imbriqué. Deux panneaux indépendants (compte et adresse, mot de passe) se placent côte à côte ou s’empilent selon la largeur disponible. Le catalogue public `/apiopen/languages` respecte le paramètre `languages.multilingual` ; le formulaire de langue n’apparaît que si plusieurs langues sont proposées. Les règles d’inscription et de confirmation d’adresse restent inchangées.
+
+## Dernière connexion App (27/11/2026)
+
+Migration Schema additive `Version20261127134501` : `symsvel_users.last_login`, date UTC nullable ; la déclaration ORM correspond au schéma. Les comptes existants et jamais connectés gardent NULL ; GDPR utilisera `created_at` en repli avec préavis complet. `UserLastLoginListener` consomme le tag Auth `symsvel.auth.session_issued_listener` uniquement pour App. Il enregistre la date après émission initiale de la session, dans la transaction DBAL partagée d'Auth, jamais lors d'un échec de connexion, d'un challenge refusé ou d'un refresh. Il verrouille et revérifie le compte actif à e-mail confirmé ; le timestamp ne recule jamais. Une exception annule l'émission. Les Admins ne sont pas concernés. Aucun traitement d'inactivité ni suppression dans Users à ce stade. Les tests SQLite réels couvrent la migration, l'isolation BO, le refus des comptes invalides, la monotonie et le rollback des tokens et de la date. CT multi-SGBD à réaliser. Composer cible Auth dev-dev, qui contient la PR #5 mergée sur dev ; remplacer cette contrainte par la release Auth compatible avant promotion stable.
+
+## Neutralisation native Users (28/11/2026)
+
+Migration additive anonymized_at, mapping ORM et identité inactive irréversible pour les API ordinaires. UserAdministration refuse édition et suppression d'une identité neutralisée, y compris si une neutralisation intervient entre lecture et écriture. Le listing BO expose anonymized_at. Le service interne UserAnonymization (non enregistré ni appelé automatiquement à ce stade) verrouille le compte dans la transaction Auth, vérifie l'adresse et la référence d'activité attendues, refuse les sessions encore actives, exige une autorisation transactionnelle explicite du futur orchestrateur GDPR, neutralise email (anonymous-ID-suffixe aléatoire@example.invalid), mot de passe Argon2id aléatoire inconnu, statut, langue, dernière connexion et confirmation, conserve l'ID et created_at, supprime les jetons natifs App et les changements de boîte mail en attente. Aucun Admin affecté. Le callback doit revalider le préavis et les contraintes intermodules et assurer les actions propriétaires sur la même connexion ; pas d'effets externes. Un conflit ou une erreur provoque rollback. Le marqueur n'est pas réversible ; une nouvelle inscription de l'ancienne adresse crée une autre identité. Aucun traitement automatique ni suppression physique GDPR déclenché ; le raccordement du plan intermodules, l'UI BO, les accès concurrentiels résiduels des profils/jetons, les autres modules propriétaires et les CT sur les quatre SGBD restent à valider. Les tests SQLite vérifient refus, neutralisation et impossibilité d'édition/suppression native. Ne pas appeler le service seul comme une garantie d'effacement complet.
+
+## Lecture des candidats à l'inactivité (28/11/2026)
+
+`InactiveUsers` est un service Users en lecture seule. Le coordinateur fixe l'ID maximal au début de la passe, fournit une borne d'activité conservatrice et parcourt par ID croissant, sans pagination OFFSET. La référence est last_login ou created_at ; les identités neutralisées et les sessions App encore actives (access ou refresh non consommé, non révoqué et non expiré) sont écartées. Les comptes jamais connectés et désactivés restent candidats ; le statut de vérification de boîte est exposé au coordinateur, sans autoriser d'envoi ou d'effacement. Le cutoff est strictement inférieur à la borne, le moteur GDPR doit calculer la date exacte et revalider le compte sous verrou avant toute opération. La limite par lot est bornée à 1000 ; aucun cron, envoi ou traitement destructif n'est introduit. Tests SQLite : fallback création, activité récente, session active, compte neutralisé et fenêtre ID stable. CT multi-SGBD et intégration GDPR restent requis.
+
+## Opération physique du propriétaire Users (28/11/2026)
+
+UserAnonymization::deleteInactive est une opération interne distincte, partageant les mêmes verrous, contrôle de l'activité et de l'adresse, exclusion des sessions actives et autorisation transactionnelle obligatoire que anonymize. Elle refuse une identité déjà neutralisée, supprime les jetons App et retire la ligne uniquement si le coordinateur a explicitement autorisé la suppression physique. Le callback doit revalider le mode GDPR, le préavis confirmé et les contraintes/protections de tous les modules propriétaires sur la connexion commune ; une FK RESTRICT non résolue provoque un rollback y compris des actions du callback. Aucun mode par défaut, aucune modification de l'API BO delete existante ni de cron dans cette passe. Tests SQLite : session active, activité différente, refus explicite, suppression et rollback des données d'extension. Le plan intermodules, le verrou purge_locked et les CT réels restent indispensables avant de raccorder ce service. Ne jamais utiliser un callback inconditionnel en production.
+
+## Protection des identités conservées (28/11/2026)
+
+Le domaine réservé example.invalid ne peut plus être utilisé lors d'une création, inscription, invitation, modification BO ou confirmation d'une nouvelle adresse App ; la neutralisation interne conserve son accès SQL dédié. Le profil App écrit la langue via une mise à jour conditionnelle sur le compte actif non neutralisé, plutôt que par flush ORM d'une entité potentiellement obsolète ; une écriture identique (rowcount zéro selon le SGBD) reste acceptable si le compte est encore actif. L'entité interdit aussi setLanguage sur un compte neutralisé. Le BO distingue Neutralisé de Désactivé et désactive édition, renvoi et suppression ; l'API reste l'autorité. Traductions FR/EN, tests PHP et BO. Les droits d'effacement manuels des comptes non neutralisés et les obligations des modules restent à intégrer au coordinateur GDPR ; aucune commande destructive activée.
+
+## Raccordement natif à GDPR
+
+`UserRetentionOwner` adapte les candidats et les opérations de neutralisation/suppression au contrat optionnel `AccountRetentionOwner`. Le bundle enregistre le service uniquement si le contrat GDPR est disponible. Le package GDPR est une dépendance de test sur la branche de travail, pas une dépendance runtime Users. Users reste propriétaire de son identité ; Auth possède ses données de sécurité et ses contributeurs (dont 2FA). Le verrou `lockActive` relit l'identité persistée dans la transaction de connexion, avant émission de session ou création/consommation de challenge. Les opérations d'effacement restent soumises au callback du coordinateur et à la même transaction. Tests d'intégration : sélection bornée, neutralisation, rollback d'un contributeur, garde d'identité et enregistrement conditionnel. Aucun accès GDPR direct aux tables Users ou Auth.
+
+La branche dev déclare aussi Settings `dev-dev` explicitement, requis par le contrat GDPR testé. La politique de stabilité Composer reste inchangée.
+
+Le propriétaire expose aussi `AccountRetentionInspector` pour le nettoyage des préavis : consultation de l'identité même si elle est récemment active, null uniquement si absente ou neutralisée. Le mode verrouillé garde la transaction de lecture jusqu'à la fin du callback GDPR ; le dry-run ne verrouille ni ne modifie les lignes. Tests de présence, transaction et neutralisation.
+
+Le contrat GDPR testé par Users est désormais celui de la branche `dev-dev` intégrée. Aucun lien runtime Composer supplémentaire n'est créé.
+
+## Profil par onglets (28/11/2026)
+
+Le profil App sépare les informations personnelles et la sécurité. L'onglet Consentements apparaît si le composant `ConsentOutlet.svelte` de GDPR est synchronisé ; il ne crée aucun service de consentement ou stockage Users. Le runtime unique GDPR fournit le formulaire au travers du contexte du layout App. Navigation accessible par liens et paramètre `tab`, choix navigateur/scope, sans association à l'identité. Les modifications email et mot de passe conservent leurs API et contrôles. Tests navigateur des onglets et du parcours avec/sans GDPR ; mettre à jour App avant les modules.

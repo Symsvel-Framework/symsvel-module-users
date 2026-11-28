@@ -39,6 +39,7 @@ final class UserProfileEmailOwnerTest extends TestCase
         ));
         self::assertFalse($owner->confirmNewEmail($subject, str_repeat('f', 64), 'next@example.test', $now));
         self::assertSame('before@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = 7'));
+        self::assertFalse($owner->confirmNewEmail($subject, $valid, 'anonymous-1@EXAMPLE.INVALID', $now));
         self::assertTrue($owner->confirmNewEmail($subject, $valid, 'next@example.test', $now));
         self::assertSame('next@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = 7'));
         self::assertFalse($owner->confirmNewEmail($subject, $valid, 'another@example.test', $now));

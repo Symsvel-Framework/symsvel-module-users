@@ -50,6 +50,10 @@ export default {
   },
   "profile": {
     "title": "My profile",
+    "detailsTab": "Personal information",
+    "securityTab": "Security",
+    "consentsTab": "Consents",
+    "privacyPolicy": "Personal data and cookies",
     "intro": "Account information and preferences.",
     "email": "Email address",
     "verification": "Email address",

@@ -68,6 +68,10 @@ jobs:
           cp app/src/lib/modules/users/*.ts assembled-app/src/lib/modules/users/
           cp app/src/routes/register/+page.svelte assembled-app/src/lib/modules/users/routes/register/+page.svelte
           cp app/tests/registration.e2e.ts assembled-app/src/routes/registration.e2e.ts
+          cp app/tests/profile.e2e.ts assembled-app/src/routes/profile.e2e.ts
+          mkdir -p assembled-app/src/lib/modules/users/routes/profile assembled-app/src/routes/profile
+          cp app/src/routes/profile/+page.svelte assembled-app/src/lib/modules/users/routes/profile/+page.svelte
+          printf '<script lang="ts">\n  import ModulePage from "#lib/modules/users/routes/profile/+page.svelte";\n</script>\n<ModulePage />\n' > assembled-app/src/routes/profile/+page.svelte
           cat > assembled-app/src/routes/register/+page.svelte <<'ROUTE'
           <script lang="ts">
             import ModulePage from '#lib/modules/users/routes/register/+page.svelte';
@@ -91,8 +95,29 @@ jobs:
           npm run build
           npx playwright install --with-deps chromium
           npm run test:unit -- --run
-          npx playwright test src/routes/registration.e2e.ts
+          npx playwright test src/routes/registration.e2e.ts src/routes/profile.e2e.ts
 
+      - name: Checkout GDPR on dev for real profile integration
+        uses: actions/checkout@v4
+        with:
+          repository: Symsvel-Framework/symsvel-module-gdpr
+          ref: dev
+          path: gdpr
+      - name: Assemble GDPR and test shared profile consent
+        working-directory: assembled-app
+        run: |
+          mkdir -p src/lib/modules/gdpr src/lib/translations/gdpr
+          cp ../gdpr/app/src/lib/modules/gdpr/*.ts src/lib/modules/gdpr/
+          cp ../gdpr/app/src/lib/modules/gdpr/*.svelte src/lib/modules/gdpr/
+          cp ../gdpr/app/src/lib/translations/*.ts src/lib/translations/gdpr/
+          mkdir -p src/lib/modules/gdpr/routes/privacy src/routes/privacy
+          cp ../gdpr/app/src/routes/privacy/+page.svelte src/lib/modules/gdpr/routes/privacy/+page.svelte
+          printf '<script lang="ts">\n  import ModulePage from "#lib/modules/gdpr/routes/privacy/+page.svelte";\n</script>\n<ModulePage />\n' > src/routes/privacy/+page.svelte
+          cp ../app/tests/profile-consents.e2e.ts src/routes/
+          npm run format
+          npm run check
+          npm run lint
+          npx playwright test src/routes/profile-consents.e2e.ts
   bo-integration:
     runs-on: ubuntu-24.04
     steps:

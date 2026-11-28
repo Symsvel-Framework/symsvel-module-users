@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace SymSvel\Module\Users\Auth;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\ParameterType;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use SymSvel\Module\Auth\Identity\PasswordPrincipal;
 use SymSvel\Module\Auth\Identity\ContextOwnedIdentity;
-use SymSvel\Module\Auth\Identity\PrincipalStatus;
+use SymSvel\Module\Auth\Identity\TransactionalPrincipalStatus;
 use SymSvel\Module\Auth\Token\TokenSubject;
 use SymSvel\Module\Users\Entity\User;
 
 /** App-only identity adapter; the Users module is not required by BO-only installs. */
-final readonly class UserIdentityProvider implements PasswordPrincipal, PrincipalStatus, ContextOwnedIdentity
+final readonly class UserIdentityProvider implements PasswordPrincipal, TransactionalPrincipalStatus, ContextOwnedIdentity
 {
     public function __construct(private EntityManagerInterface $entityManager)
     {
@@ -48,5 +50,23 @@ final readonly class UserIdentityProvider implements PasswordPrincipal, Principa
         $user = $this->entityManager->find(User::class, $subject->id);
 
         return $user instanceof User && $user->isEnabled() && $user->getEmailVerifiedAt() !== null;
+    }
+
+    public function lockActive(TokenSubject $subject): bool
+    {
+        if ($subject->context !== 'app') {
+            return false;
+        }
+        $db = $this->entityManager->getConnection();
+        if (!$db->isTransactionActive()) {
+            throw new \LogicException('Identity guard requires an active transaction.');
+        }
+        $sql = 'SELECT id FROM symsvel_users WHERE id = ? AND enabled = ? AND email_verified_at IS NOT NULL AND anonymized_at IS NULL';
+        if ($db->getDatabasePlatform() instanceof SQLitePlatform) {
+            $db->executeStatement('UPDATE symsvel_users SET id = id WHERE id = ?', [$subject->id]);
+        } else {
+            $sql .= ' FOR UPDATE';
+        }
+        return $db->fetchOne($sql, [$subject->id, true], [ParameterType::INTEGER, ParameterType::BOOLEAN]) !== false;
     }
 }

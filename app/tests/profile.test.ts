@@ -28,3 +28,13 @@ it('provides a public confirmation page in the correct session context', () => {
   expect(source).toContain('public: true');
   expect(source).toContain('history.replaceState');
 });
+
+it('uses the public language catalog and renders independent responsive panels only with a real language choice', () => {
+  const source = readFileSync(new URL('../src/routes/profile/+page.svelte', import.meta.url), 'utf8');
+  expect(source).toContain("'/apiopen/languages'");
+  expect(source).not.toContain("'/apiopen/languages/account-options'");
+  expect(source).toContain('{#if languages.length > 1}');
+  expect(source).toContain('data-profile-details');
+  expect(source).toContain('data-profile-password');
+  expect(source).not.toContain('class="auth-shell"');
+});

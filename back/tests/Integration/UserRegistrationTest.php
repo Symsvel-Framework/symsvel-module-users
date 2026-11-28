@@ -48,7 +48,13 @@ final class UserRegistrationTest extends TestCase
         }
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $registration = new UserRegistration($db, new PasswordResetLimiter($db, 'a-strong-secret-for-registration'));
-        $this->expectException(\InvalidArgumentException::class);
-        $registration->register('invalid', 'short', '192.0.2.10', new \DateTimeImmutable());
+        foreach (['invalid', 'anonymous-1@EXAMPLE.INVALID'] as $email) {
+            try {
+                $registration->register($email, 'Long-password-test-1!', '192.0.2.10', new \DateTimeImmutable());
+                self::fail('Invalid or reserved mailbox accepted.');
+            } catch (\InvalidArgumentException) {
+                self::assertTrue(true);
+            }
+        }
     }
 }

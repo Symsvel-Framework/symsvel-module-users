@@ -12,8 +12,14 @@ use SymSvel\Module\Auth\Schema\AuthTokenSchema;
 use SymSvel\Module\Auth\Schema\AppInvitationSchema;
 use SymSvel\Module\Auth\Schema\EmailVerificationSchema;
 use SymSvel\Module\Auth\Schema\PasswordResetSchema;
+use SymSvel\Module\Auth\Schema\ProfileEmailChangeSchema;
+use SymSvel\Module\Users\Service\UserAnonymization;
+use SymSvel\Module\Users\Service\InactiveUsers;
 use SymSvel\Module\Auth\Token\DbalTokenStore;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
+use SymSvel\Module\Auth\Token\AppPrincipalSecurityData;
+use SymSvel\Module\Auth\Token\AppPrincipalSecurityContributor;
+use SymSvel\Module\Users\Gdpr\UserRetentionOwner;
 use SymSvel\Module\Users\Service\UserAdministration;
 
 final class UserAdministrationTest extends TestCase
@@ -25,12 +31,13 @@ final class UserAdministrationTest extends TestCase
             self::markTestSkipped('pdo_sqlite required.');
         }
         $db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $db->executeStatement('CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email VARCHAR(254) NOT NULL UNIQUE, language VARCHAR(4) NULL, password_hash VARCHAR(255) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL, created_at DATETIME NOT NULL)');
+        $db->executeStatement('CREATE TABLE symsvel_users (id INTEGER PRIMARY KEY AUTOINCREMENT, email VARCHAR(254) NOT NULL UNIQUE, language VARCHAR(4) NULL, password_hash VARCHAR(255) NOT NULL, enabled BOOLEAN NOT NULL, email_verified_at DATETIME NULL, created_at DATETIME NOT NULL, anonymized_at DATETIME NULL, last_login DATETIME NULL)');
         $schema = new Schema();
         AuthTokenSchema::apply($schema);
         EmailVerificationSchema::apply($schema);
         PasswordResetSchema::apply($schema);
         AppInvitationSchema::apply($schema);
+        ProfileEmailChangeSchema::apply($schema);
         foreach ($schema->toSql($db->getDatabasePlatform()) as $sql) {
             $db->executeStatement($sql);
         }
@@ -115,6 +122,154 @@ final class UserAdministrationTest extends TestCase
         self::assertNull($db->fetchOne('SELECT email_verified_at FROM symsvel_users WHERE id = ?', [$id]));
     }
 
+    public function testNeutralizationRetainsIdAndPermanentlyBlocksOrdinaryAdministration(): void
+    {
+        [$users, $db] = $this->fixture();
+        $activity = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $id = $users->create('person@example.test', 'correct-password-123', $activity, 'fr');
+        $neutralizer = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)), new AppPrincipalSecurityData($db));
+        try {
+            $neutralizer->anonymize($id, 'person@example.test', $activity, $now, static fn () => false);
+            self::fail('Unauthorized neutralization accepted.');
+        } catch (\DomainException) {
+        }
+        self::assertSame('person@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = ?', [$id]));
+        self::assertTrue($neutralizer->anonymize($id, 'person@example.test', $activity, $now, static fn () => true));
+        $row = $db->fetchAssociative('SELECT * FROM symsvel_users WHERE id = ?', [$id]);
+        self::assertMatchesRegularExpression('/^anonymous-'.$id.'-[a-f0-9]{32}@example\.invalid$/D', $row['email']);
+        self::assertSame(0, (int) $row['enabled']);
+        self::assertNull($row['language']);
+        self::assertNull($row['last_login']);
+        self::assertNotNull($row['anonymized_at']);
+        self::assertFalse(password_verify('correct-password-123', $row['password_hash']));
+        foreach ([static fn () => $users->update($id, 'reactivated@example.test', true), static fn () => $users->delete($id)] as $operation) {
+            try {
+                $operation();
+                self::fail('Neutralized identity could be modified.');
+            } catch (\DomainException) {
+            }
+        }
+        self::assertNull($users->pendingInvitationEmail($id));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+    }
+
+    public function testPhysicalDeletionRequiresCurrentActivityNoLiveSessionAndExplicitApproval(): void
+    {
+        [$users, $db] = $this->fixture();
+        $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $id = $users->invite('delete@example.test', $old);
+        $owner = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)), new AppPrincipalSecurityData($db));
+        $calls = 0;
+        $approval = static function () use (&$calls): bool { ++$calls; return true; };
+        $db->insert('symsvel_auth_refresh_tokens', [
+            'context' => 'app', 'principal_id' => $id, 'family_id' => str_repeat('a', 32),
+            'token_hash' => str_repeat('c', 64), 'created_at' => '2026-11-27 10:00:00',
+            'expires_at' => '2026-12-01 10:00:00',
+        ]);
+        foreach ([
+            static fn () => $owner->deleteInactive($id, 'delete@example.test', $old->modify('-1 day'), $now, $approval),
+            static fn () => $owner->deleteInactive($id, 'delete@example.test', $old, $now, $approval),
+        ] as $operation) {
+            try {
+                $operation();
+                self::fail('Unsafe deletion accepted.');
+            } catch (\DomainException) {
+            }
+        }
+        self::assertSame(0, $calls);
+        $db->update('symsvel_auth_refresh_tokens', ['revoked_at' => '2026-11-27 11:00:00'], ['principal_id' => $id, 'context' => 'app']);
+        try {
+            $owner->deleteInactive($id, 'delete@example.test', $old, $now, static fn () => false);
+            self::fail('Deletion without approval accepted.');
+        } catch (\DomainException) {
+        }
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_refresh_tokens'));
+        self::assertTrue($owner->deleteInactive($id, 'delete@example.test', $old, $now, $approval));
+        self::assertSame(1, $calls);
+        self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+        self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_refresh_tokens'));
+    }
+
+    public function testPhysicalDeletionRollsBackModuleWorkWhenAReferencePreventsDeletion(): void
+    {
+        [$users, $db] = $this->fixture();
+        $db->executeStatement('PRAGMA foreign_keys = ON');
+        $db->executeStatement('CREATE TABLE retained_document (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES symsvel_users(id) ON DELETE RESTRICT)');
+        $db->executeStatement('CREATE TABLE removable_profile (user_id INTEGER PRIMARY KEY)');
+        $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $id = $users->invite('retained@example.test', $old);
+        $db->insert('retained_document', ['id' => 1, 'user_id' => $id]);
+        $db->insert('removable_profile', ['user_id' => $id]);
+        $owner = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)), new AppPrincipalSecurityData($db));
+        try {
+            $owner->deleteInactive($id, 'retained@example.test', $old, $now, static function () use ($db, $id): bool {
+                $db->delete('removable_profile', ['user_id' => $id]);
+                return true;
+            });
+            self::fail('Referenced identity deleted.');
+        } catch (\Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException) {
+        }
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM removable_profile'));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM retained_document'));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+    }
+
+    public function testInactivityScanUsesLastLoginOrCreationAndExcludesLiveSessionsAndNeutralizedAccounts(): void
+    {
+        [$users, $db] = $this->fixture();
+        $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $never = $users->invite('never@example.test', $old);
+        $recent = $users->invite('recent@example.test', $old);
+        $inactive = $users->invite('inactive@example.test', $old);
+        $active = $users->invite('active@example.test', $old);
+        $neutral = $users->invite('neutral@example.test', $old);
+        $db->update('symsvel_users', ['last_login' => '2026-11-27 10:00:00'], ['id' => $recent]);
+        $db->update('symsvel_users', ['last_login' => '2025-06-01 10:00:00', 'email_verified_at' => '2025-01-01 10:00:00'], ['id' => $inactive]);
+        $db->update('symsvel_users', ['anonymized_at' => '2026-11-01 10:00:00'], ['id' => $neutral]);
+        $db->insert('symsvel_auth_refresh_tokens', [
+            'context' => 'app', 'principal_id' => $active, 'family_id' => str_repeat('a', 32),
+            'token_hash' => str_repeat('b', 64), 'created_at' => '2026-11-27 10:00:00',
+            'expires_at' => '2026-12-01 10:00:00',
+        ]);
+        $scan = new InactiveUsers($db);
+        $maximum = $scan->maximumId();
+        $late = $users->invite('late@example.test', $old);
+        self::assertGreaterThan($maximum, $late);
+        $before = $now->modify('-11 months');
+        $first = $scan->batch(0, $maximum, $before, $now, 1);
+        self::assertSame([$never], array_column($first, 'id'));
+        self::assertEquals($old, $first[0]['activity']);
+        self::assertFalse($first[0]['verified']);
+        $second = $scan->batch($never, $maximum, $before, $now, 100);
+        self::assertSame([$inactive], array_column($second, 'id'));
+        self::assertEquals(new \DateTimeImmutable('2025-06-01T10:00:00Z'), $second[0]['activity']);
+        self::assertTrue($second[0]['verified']);
+        self::assertSame([], $scan->batch($inactive, $maximum, $before, $now));
+    }
+
+    public function testRetainedMailboxNamespaceCannotBeUsedForOrdinaryAccounts(): void
+    {
+        [$users, $db] = $this->fixture();
+        $now = new \DateTimeImmutable();
+        $id = $users->invite('ordinary@example.test', $now);
+        foreach ([
+            static fn () => $users->invite('anonymous-1@example.invalid', $now),
+            static fn () => $users->update($id, 'ANONYMOUS-2@EXAMPLE.INVALID', true),
+        ] as $operation) {
+            try {
+                $operation();
+                self::fail('Reserved address accepted.');
+            } catch (\InvalidArgumentException) {
+            }
+        }
+        self::assertSame('ordinary@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = ?', [$id]));
+    }
+
     public function testInvalidPasswordAndUnknownUserAreRejected(): void
     {
         [$users] = $this->fixture();
@@ -125,5 +280,53 @@ final class UserAdministrationTest extends TestCase
         }
         $this->expectException(\DomainException::class);
         $users->update(999, null, true);
+    }
+
+    public function testNativeRetentionAdapterKeepsOwnershipAndRollsBackSecurityContributor(): void
+    {
+        [$users, $db] = $this->fixture();
+        $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $id = $users->invite('owner@example.test', $old);
+        $db->executeStatement('CREATE TABLE custom_security (principal_id INT PRIMARY KEY)');
+        $db->insert('custom_security', ['principal_id' => $id]);
+        $contributor = new class($db) implements AppPrincipalSecurityContributor {
+            public bool $fail = true;
+            public function __construct(private Connection $db) {}
+            public function moduleId(): string { return 'fixture'; }
+            public function eraseAppPrincipal(int $userId): void
+            {
+                $this->db->delete('custom_security', ['principal_id' => $userId]);
+                if ($this->fail) throw new \RuntimeException('Contributor veto.');
+            }
+        };
+        $owner = new UserRetentionOwner(new InactiveUsers($db), new UserAnonymization(
+            $db, new TokenSessionRevoker(new DbalTokenStore($db)), new AppPrincipalSecurityData($db, [$contributor]),
+        ));
+        $candidates = $owner->batch(0, $owner->maximumId(), $now->modify('-12 months'), $now, 1);
+        self::assertCount(1, $candidates);
+        self::assertSame($id, $candidates[0]->id);
+        try {
+            $owner->treat($candidates[0], 'anonymize', $now, static fn () => true);
+            self::fail('Contributor failure did not veto retention.');
+        } catch (\RuntimeException $e) {
+            self::assertSame('Contributor veto.', $e->getMessage());
+        }
+        self::assertSame('owner@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = ?', [$id]));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM custom_security'));
+        $owner->inspect($id, false, static function ($candidate) use ($db, $id, $old): void {
+            self::assertFalse($db->isTransactionActive());
+            self::assertSame($id, $candidate->id);
+            self::assertEquals($old, $candidate->activity);
+        });
+        $owner->inspect($id, true, static function ($candidate) use ($db, $id): void {
+            self::assertTrue($db->isTransactionActive());
+            self::assertSame($id, $candidate->id);
+        });
+        $contributor->fail = false;
+        self::assertTrue($owner->treat($candidates[0], 'anonymize', $now, static fn () => true));
+        self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM custom_security'));
+        self::assertSame([], $owner->batch(0, $owner->maximumId(), $now->modify('-12 months'), $now, 1));
+        $owner->inspect($id, true, static fn ($candidate) => self::assertNull($candidate));
     }
 }
