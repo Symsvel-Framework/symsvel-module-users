@@ -142,7 +142,7 @@ final readonly class UserAdministration
     private static function email(string $value): string
     {
         $email = strtolower(trim($value));
-        if (strlen($email) > 254 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        if (strlen($email) > 254 || filter_var($email, FILTER_VALIDATE_EMAIL) === false || str_ends_with($email, '@example.invalid')) {
             throw new \InvalidArgumentException('Invalid user email.');
         }
         return $email;

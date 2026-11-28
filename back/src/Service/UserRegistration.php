@@ -25,7 +25,7 @@ final readonly class UserRegistration
     public function register(string $email, string $password, string $clientIp, \DateTimeImmutable $now, ?string $language = null): bool
     {
         $email = strtolower(trim($email));
-        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254 || str_ends_with($email, '@example.invalid')
             || !NewPasswordPolicy::accepts($password)) {
             throw new \InvalidArgumentException('Invalid registration data.');
         }

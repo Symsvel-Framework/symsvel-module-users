@@ -13,6 +13,7 @@ export default {
   "none": "Aucun utilisateur.",
   "enabled": "Actif",
   "disabled": "Désactivé",
+  "anonymized": "Neutralisé",
   "verified": "Vérifié",
   "unverified": "Non vérifié",
   "state": "État",

@@ -249,6 +249,24 @@ final class UserAdministrationTest extends TestCase
         self::assertSame([], $scan->batch($inactive, $maximum, $before, $now));
     }
 
+    public function testRetainedMailboxNamespaceCannotBeUsedForOrdinaryAccounts(): void
+    {
+        [$users, $db] = $this->fixture();
+        $now = new \DateTimeImmutable();
+        $id = $users->invite('ordinary@example.test', $now);
+        foreach ([
+            static fn () => $users->invite('anonymous-1@example.invalid', $now),
+            static fn () => $users->update($id, 'ANONYMOUS-2@EXAMPLE.INVALID', true),
+        ] as $operation) {
+            try {
+                $operation();
+                self::fail('Reserved address accepted.');
+            } catch (\InvalidArgumentException) {
+            }
+        }
+        self::assertSame('ordinary@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = ?', [$id]));
+    }
+
     public function testInvalidPasswordAndUnknownUserAreRejected(): void
     {
         [$users] = $this->fixture();

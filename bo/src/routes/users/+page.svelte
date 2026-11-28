@@ -15,7 +15,7 @@
   import { ApiError } from '../../../../api/client';
   import { uiLanguage } from '../../../../api/locales';
   import { boApi } from '../../../../api/session';
-  import { boUsersCopy, type BoUser, type BoUsersResponse } from '../../bo';
+  import { boUsersCopy, isNeutralized, type BoUser, type BoUsersResponse } from '../../bo';
 
   let loading = $state(false);
   let busy = $state(false);
@@ -73,22 +73,22 @@
     { key: 'email_verified', label: t.emailState,
       format: (v) => v ? t.verified : t.unverified },
     { key: 'enabled', label: t.state,
-      format: (v) => v ? t.enabled : t.disabled },
+      format: (v, row) => isNeutralized(row) ? t.anonymized : v ? t.enabled : t.disabled },
     { key: 'created_at', label: t.createdAt, sortable: true,
       format: (v) => new Date(String(v)).toLocaleDateString(language) }
   ]);
   const actions = $derived<DataAction<BoUser>[]>([
     {
-      key: 'edit', label: t.edit, onClick: (row) => edit(row)
+      key: 'edit', label: t.edit, disabled: isNeutralized, onClick: (row) => edit(row)
     },
     {
       key: 'resend', label: (row) => row.email_verified ? t.verified : t.resend,
-      disabled: (row) => row.email_verified || !row.enabled || resending !== null,
+      disabled: (row) => isNeutralized(row) || row.email_verified || !row.enabled || resending !== null,
       onClick: (row) => { void resend(row.id); }
     },
     {
       key: 'delete', variant: 'danger', label: t.delete,
-      disabled: () => deleting !== null,
+      disabled: (row) => isNeutralized(row) || deleting !== null,
       onClick: (row) => { void remove(row.id); }
     }
   ]);
@@ -159,6 +159,7 @@
   }
 
   function edit(user: BoUser): void {
+    if (isNeutralized(user)) return;
     editing = user;
     editEmail = user.email;
     editLanguage = selectedLanguage(user.language);

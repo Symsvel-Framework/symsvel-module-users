@@ -28,7 +28,8 @@ final readonly class UserProfileEmailOwner implements ProfileEmailOwner
         \DateTimeImmutable $now,
     ): bool {
         if ($subject->context !== 'app' || !preg_match('/^[a-f0-9]{64}$/D', $oldEmailHash)
-            || filter_var($newEmail, FILTER_VALIDATE_EMAIL) === false || strlen($newEmail) > 254) {
+            || filter_var($newEmail, FILTER_VALIDATE_EMAIL) === false || strlen($newEmail) > 254
+            || str_ends_with(strtolower(trim($newEmail)), '@example.invalid')) {
             return false;
         }
         $old = $this->db->fetchOne(

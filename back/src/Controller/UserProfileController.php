@@ -58,15 +58,24 @@ final readonly class UserProfileController
         }
         try {
             $language = $this->languages->resolveAccountLanguage($body['language']);
-            $user->setLanguage($language);
         } catch (\InvalidArgumentException) {
             return self::failure(400);
         } catch (\DomainException) {
             return self::failure(409);
         }
-        $this->entityManager->flush();
+        // An in-flight profile request must never restore personal data after neutralization.
+        $id = (int) $user->getId();
+        $changed = $this->db->executeStatement(
+            'UPDATE symsvel_users SET language = ? WHERE id = ? AND enabled = ? AND anonymized_at IS NULL',
+            [$language, $id, true],
+            [$language === null ? ParameterType::NULL : ParameterType::STRING, ParameterType::INTEGER, ParameterType::BOOLEAN],
+        );
+        if ($changed !== 1 && $this->db->fetchOne(
+            'SELECT id FROM symsvel_users WHERE id = ? AND enabled = ? AND anonymized_at IS NULL',
+            [$id, true], [ParameterType::INTEGER, ParameterType::BOOLEAN],
+        ) === false) return self::failure(409);
 
-        return self::reply(['data' => self::present($user)]);
+        return self::reply(['data' => array_replace(self::present($user), ['language' => $language])]);
     }
 
 
@@ -141,6 +150,7 @@ final readonly class UserProfileController
             || !is_string($data['new_email'] ?? null)
             || strlen(trim($data['new_email'])) > 254
             || filter_var(trim($data['new_email']), FILTER_VALIDATE_EMAIL) === false
+            || str_ends_with(strtolower(trim($data['new_email'])), '@example.invalid')
             || !in_array($data['locale'] ?? null, ['fr', 'en'], true)) {
             return self::failure(400);
         }

@@ -7,6 +7,7 @@ export type BoUser = {
   enabled: boolean;
   email_verified: boolean;
   created_at: string;
+  anonymized_at?: string | null;
 };
 export type BoUsersResponse = { data: BoUser[] };
 
@@ -17,7 +18,7 @@ const messages = {
     email: 'Adresse e-mail', accountLanguage: 'Langue du compte', inviteIntro: 'Le destinataire choisira son mot de passe et activera son compte depuis le lien reçu par e-mail.',
     create: 'Inviter un utilisateur', creating: 'Invitation…', list: 'Comptes utilisateurs',
     refresh: 'Actualiser', loading: 'Chargement…', none: 'Aucun utilisateur.',
-    enabled: 'Actif', disabled: 'Désactivé', verified: 'Vérifié', unverified: 'Non vérifié',
+    enabled: 'Actif', disabled: 'Désactivé', anonymized: 'Neutralisé', verified: 'Vérifié', unverified: 'Non vérifié',
     state: 'État', emailState: 'Adresse', createdAt: 'Créé le', actions: 'Actions',
     search: 'Rechercher', searchHint: 'Adresse e-mail…', resend: 'Renvoyer l’invitation',
     resent: 'Nouvelle invitation envoyée.', edit: 'Modifier',
@@ -34,7 +35,7 @@ const messages = {
     email: 'Email address', accountLanguage: 'Account language', inviteIntro: 'The recipient will choose their password and activate their account using the emailed link.',
     create: 'Invite user', creating: 'Inviting…', list: 'User accounts',
     refresh: 'Refresh', loading: 'Loading…', none: 'No users.',
-    enabled: 'Active', disabled: 'Disabled', verified: 'Verified', unverified: 'Unverified',
+    enabled: 'Active', disabled: 'Disabled', anonymized: 'De-identified', verified: 'Verified', unverified: 'Unverified',
     state: 'Status', emailState: 'Email', createdAt: 'Created', actions: 'Actions',
     search: 'Search', searchHint: 'Email address…', resend: 'Resend invitation',
     resent: 'New invitation sent.', edit: 'Edit',
@@ -46,6 +47,7 @@ const messages = {
     session: 'Session expired. Please sign in.', failure: 'Operation failed.'
   }
 };
+export function isNeutralized(user: BoUser): boolean { return typeof user.anonymized_at === 'string' && user.anonymized_at.length > 0; }
 export type BoUsersCopy = (typeof messages)['fr'];
 export function boUsersCopy(language: string | null): BoUsersCopy {
   const base = language?.toLowerCase().split('-')[0] === 'en' ? messages.en : messages.fr;

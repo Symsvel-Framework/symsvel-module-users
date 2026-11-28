@@ -40,7 +40,7 @@ class User
 
     public function __construct(string $email, string $passwordHash)
     {
-        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254) { throw new \InvalidArgumentException('Invalid user email.'); }
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254 || str_ends_with(strtolower(trim($email)), '@example.invalid')) { throw new \InvalidArgumentException('Invalid user email.'); }
         if (password_get_info($passwordHash)['algoName'] !== 'argon2id') { throw new \InvalidArgumentException('User password must be hashed with Argon2id.'); }
         $this->email = $email;
         $this->passwordHash = $passwordHash;
@@ -51,6 +51,7 @@ class User
 
     public function setLanguage(?string $language): void
     {
+        if ($this->anonymizedAt !== null) throw new \DomainException('Neutralized user cannot be edited.');
         if ($language !== null) {
             $language = strtolower(trim($language));
             if (preg_match('/^[a-z]{2,4}$/D', $language) !== 1) {
