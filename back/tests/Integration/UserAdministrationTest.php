@@ -151,6 +151,70 @@ final class UserAdministrationTest extends TestCase
         self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
     }
 
+    public function testPhysicalDeletionRequiresCurrentActivityNoLiveSessionAndExplicitApproval(): void
+    {
+        [$users, $db] = $this->fixture();
+        $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $id = $users->invite('delete@example.test', $old);
+        $owner = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)));
+        $calls = 0;
+        $approval = static function () use (&$calls): bool { ++$calls; return true; };
+        $db->insert('symsvel_auth_refresh_tokens', [
+            'context' => 'app', 'principal_id' => $id, 'family_id' => str_repeat('a', 32),
+            'token_hash' => str_repeat('c', 64), 'created_at' => '2026-11-27 10:00:00',
+            'expires_at' => '2026-12-01 10:00:00',
+        ]);
+        foreach ([
+            static fn () => $owner->deleteInactive($id, 'delete@example.test', $old->modify('-1 day'), $now, $approval),
+            static fn () => $owner->deleteInactive($id, 'delete@example.test', $old, $now, $approval),
+        ] as $operation) {
+            try {
+                $operation();
+                self::fail('Unsafe deletion accepted.');
+            } catch (\DomainException) {
+            }
+        }
+        self::assertSame(0, $calls);
+        $db->update('symsvel_auth_refresh_tokens', ['revoked_at' => '2026-11-27 11:00:00'], ['principal_id' => $id, 'context' => 'app']);
+        try {
+            $owner->deleteInactive($id, 'delete@example.test', $old, $now, static fn () => false);
+            self::fail('Deletion without approval accepted.');
+        } catch (\DomainException) {
+        }
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_refresh_tokens'));
+        self::assertTrue($owner->deleteInactive($id, 'delete@example.test', $old, $now, $approval));
+        self::assertSame(1, $calls);
+        self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+        self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_auth_refresh_tokens'));
+    }
+
+    public function testPhysicalDeletionRollsBackModuleWorkWhenAReferencePreventsDeletion(): void
+    {
+        [$users, $db] = $this->fixture();
+        $db->executeStatement('PRAGMA foreign_keys = ON');
+        $db->executeStatement('CREATE TABLE retained_document (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES symsvel_users(id) ON DELETE RESTRICT)');
+        $db->executeStatement('CREATE TABLE removable_profile (user_id INTEGER PRIMARY KEY)');
+        $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $id = $users->invite('retained@example.test', $old);
+        $db->insert('retained_document', ['id' => 1, 'user_id' => $id]);
+        $db->insert('removable_profile', ['user_id' => $id]);
+        $owner = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)));
+        try {
+            $owner->deleteInactive($id, 'retained@example.test', $old, $now, static function () use ($db, $id): bool {
+                $db->delete('removable_profile', ['user_id' => $id]);
+                return true;
+            });
+            self::fail('Referenced identity deleted.');
+        } catch (\Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException) {
+        }
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM removable_profile'));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM retained_document'));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+    }
+
     public function testInactivityScanUsesLastLoginOrCreationAndExcludesLiveSessionsAndNeutralizedAccounts(): void
     {
         [$users, $db] = $this->fixture();

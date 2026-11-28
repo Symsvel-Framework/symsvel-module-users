@@ -24,6 +24,17 @@ final readonly class UserAnonymization
      */
     public function anonymize(int $id, string $expectedEmail, \DateTimeImmutable $expectedActivity, \DateTimeImmutable $now, callable $authorize): bool
     {
+        return $this->process($id, $expectedEmail, $expectedActivity, $now, $authorize, false);
+    }
+
+    /** Physical deletion is a distinct, explicitly authorized owner operation. */
+    public function deleteInactive(int $id, string $expectedEmail, \DateTimeImmutable $expectedActivity, \DateTimeImmutable $now, callable $authorize): bool
+    {
+        return $this->process($id, $expectedEmail, $expectedActivity, $now, $authorize, true);
+    }
+
+    private function process(int $id, string $expectedEmail, \DateTimeImmutable $expectedActivity, \DateTimeImmutable $now, callable $authorize, bool $delete): bool
+    {
         if ($id < 1 || $this->db->isTransactionActive()) {
             throw new \InvalidArgumentException('Invalid anonymization context.');
         }
@@ -31,7 +42,7 @@ final readonly class UserAnonymization
         $stamp = $now->setTimezone($utc)->format('Y-m-d H:i:s');
         $subject = new TokenSubject('app', $id);
 
-        return $this->sessions->revokeWith($subject, $now, function () use ($id, $expectedEmail, $expectedActivity, $now, $stamp, $utc, $authorize): bool {
+        return $this->sessions->revokeWith($subject, $now, function () use ($id, $expectedEmail, $expectedActivity, $now, $stamp, $utc, $authorize, $delete): bool {
             $sql = 'SELECT email, created_at, last_login, anonymized_at FROM symsvel_users WHERE id = ?';
             if ($this->db->getDatabasePlatform() instanceof SQLitePlatform) {
                 $this->db->executeStatement('UPDATE symsvel_users SET id = id WHERE id = ?', [$id]);
@@ -55,23 +66,28 @@ final readonly class UserAnonymization
                 }
             }
             if ($authorize() !== true) {
-                throw new \DomainException('Anonymization not authorized by the retention coordinator.');
+                throw new \DomainException('Account treatment not authorized by the retention coordinator.');
             }
-            // Random suffix prevents a reserved placeholder collision with legacy accounts.
-            $email = 'anonymous-'.$id.'-'.bin2hex(random_bytes(16)).'@example.invalid';
-            $hash = password_hash(bin2hex(random_bytes(32)), PASSWORD_ARGON2ID);
-            $changed = $this->db->executeStatement(
-                'UPDATE symsvel_users SET email = ?, password_hash = ?, enabled = ?, language = NULL, email_verified_at = NULL, last_login = NULL, anonymized_at = ? WHERE id = ? AND anonymized_at IS NULL',
-                [$email, $hash, false, $stamp, $id],
-                [ParameterType::STRING, ParameterType::STRING, ParameterType::BOOLEAN, ParameterType::STRING, ParameterType::INTEGER],
-            );
-            if ($changed !== 1) {
-                throw new \DomainException('User changed concurrently.');
+            if (!$delete) {
+                // Random suffix prevents a reserved placeholder collision with legacy accounts.
+                $email = 'anonymous-'.$id.'-'.bin2hex(random_bytes(16)).'@example.invalid';
+                $hash = password_hash(bin2hex(random_bytes(32)), PASSWORD_ARGON2ID);
+                $changed = $this->db->executeStatement(
+                    'UPDATE symsvel_users SET email = ?, password_hash = ?, enabled = ?, language = NULL, email_verified_at = NULL, last_login = NULL, anonymized_at = ? WHERE id = ? AND anonymized_at IS NULL',
+                    [$email, $hash, false, $stamp, $id],
+                    [ParameterType::STRING, ParameterType::STRING, ParameterType::BOOLEAN, ParameterType::STRING, ParameterType::INTEGER],
+                );
+                if ($changed !== 1) {
+                    throw new \DomainException('User changed concurrently.');
+                }
             }
             foreach (['symsvel_auth_email_verification_tokens', 'symsvel_auth_password_reset_tokens', 'symsvel_auth_profile_email_changes', 'symsvel_auth_access_tokens', 'symsvel_auth_refresh_tokens'] as $table) {
                 $this->db->delete($table, ['context' => 'app', 'principal_id' => $id]);
             }
             $this->db->delete('symsvel_auth_app_invitations', ['principal_id' => $id]);
+            if ($delete && $this->db->executeStatement('DELETE FROM symsvel_users WHERE id = ? AND anonymized_at IS NULL', [$id]) !== 1) {
+                throw new \DomainException('User changed concurrently.');
+            }
 
             return true;
         });
