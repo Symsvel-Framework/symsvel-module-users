@@ -4,6 +4,9 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import { page } from '$app/state';
+  import type { Component } from 'svelte';
+  import type { Path } from '$app/types';
   import { api, ApiError } from '../../../../api/client';
   import { appApi, logoutApp } from '../../../../api/session';
   import { uiLanguage } from '../../../../api/locales';
@@ -34,6 +37,10 @@
   let notice = $state('');
   const locale = $derived($uiLanguage ?? (typeof navigator === 'undefined' ? 'fr' : navigator.language));
   const t = $derived(appProfileCopy(locale));
+  // GDPR owns the preferences and its single runtime. No hard dependency on the optional outlet.
+  const ConsentOutlet = import.meta.glob<Component>('../../../gdpr/ConsentOutlet.svelte', { eager: true, import: 'default' })['../../../gdpr/ConsentOutlet.svelte'];
+  const tab = $derived(page.url.searchParams.get('tab') === 'security' ? 'security' : page.url.searchParams.get('tab') === 'consents' && ConsentOutlet ? 'consents' : 'details');
+  const profilePath = resolve('/profile' as Path);
 
   function explain(cause: unknown): string {
     if (cause instanceof ApiError && cause.status === 401) {
@@ -156,7 +163,13 @@
     {#if notice}<p class="success" role="status">{notice}</p>{/if}
     {#if loading}<p role="status">{t.loading}</p>{/if}
     {#if profile}
+    <nav class="profile-tabs" aria-label={t.title}>
+      <a href={profilePath} aria-current={tab === 'details' ? 'page' : undefined}>{t.detailsTab}</a>
+      <a href={profilePath + '?tab=security'} aria-current={tab === 'security' ? 'page' : undefined}>{t.securityTab}</a>
+      {#if ConsentOutlet}<a href={profilePath + '?tab=consents'} aria-current={tab === 'consents' ? 'page' : undefined}>{t.consentsTab}</a>{/if}
+    </nav>
     <div class="profile-grid">
+      {#if tab === 'details'}
       <section class="profile-card" data-profile-details>
       <dl>
         <div><dt>{t.email}</dt><dd>{profile.email}</dd></div>
@@ -193,6 +206,7 @@
         </button>
       </form>
       </section>
+      {:else if tab === 'security'}
       <section class="profile-card" data-profile-password>
       <form class="form" onsubmit={changePassword}>
         <h2>{t.passwordTitle}</h2>
@@ -213,6 +227,12 @@
         </button>
       </form>
       </section>
+      {:else if ConsentOutlet}
+      <section class="profile-card" data-profile-consents>
+        <ConsentOutlet />
+        <p><a href={resolve('/privacy' as Path)}>{t.privacyPolicy}</a></p>
+      </section>
+      {/if}
     </div>
     {/if}
     <p><a href={resolve('/dashboard')}>{t.back}</a></p>
@@ -221,6 +241,10 @@
 <style>
   .profile-page { max-width: 1160px; margin: 0 auto; }
   .profile-page h1 { margin: 0; }
+  .profile-tabs { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 20px 0; border-bottom: 1px solid #e2e7ee; }
+  .profile-tabs a { color: inherit; padding: 10px 4px; text-decoration: none; border-bottom: 2px solid transparent; }
+  .profile-tabs a[aria-current='page'] { border-color: currentColor; font-weight: 650; }
+  .profile-tabs a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
   .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); align-items: start; gap: 20px; }
   .profile-card { min-width: 0; background: #fff; border: 1px solid #e2e7ee; border-radius: 14px; padding: 24px; }
   .profile-card h2 { font-size: 1.05rem; margin: 0 0 4px; }

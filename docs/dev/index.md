@@ -504,3 +504,7 @@ La branche dev déclare aussi Settings `dev-dev` explicitement, requis par le co
 Le propriétaire expose aussi `AccountRetentionInspector` pour le nettoyage des préavis : consultation de l'identité même si elle est récemment active, null uniquement si absente ou neutralisée. Le mode verrouillé garde la transaction de lecture jusqu'à la fin du callback GDPR ; le dry-run ne verrouille ni ne modifie les lignes. Tests de présence, transaction et neutralisation.
 
 Le contrat GDPR testé par Users est désormais celui de la branche `dev-dev` intégrée. Aucun lien runtime Composer supplémentaire n'est créé.
+
+## Profil par onglets (28/11/2026)
+
+Le profil App sépare les informations personnelles et la sécurité. L'onglet Consentements apparaît si le composant `ConsentOutlet.svelte` de GDPR est synchronisé ; il ne crée aucun service de consentement ou stockage Users. Le runtime unique GDPR fournit le formulaire au travers du contexte du layout App. Navigation accessible par liens et paramètre `tab`, choix navigateur/scope, sans association à l'identité. Les modifications email et mot de passe conservent leurs API et contrôles. Tests navigateur des onglets et du parcours avec/sans GDPR ; mettre à jour App avant les modules.

@@ -26,16 +26,17 @@ for (const multiple of [false, true]) {
     const details = page.locator('[data-profile-details]');
     const password = page.locator('[data-profile-password]');
     await expect(details).toContainText('profile@example.test');
-    await expect(password).toBeVisible();
+    await expect(password).toHaveCount(0);
     await expect(page.locator('[data-profile-language]')).toHaveCount(multiple ? 1 : 0);
-    const left = await details.boundingBox();
-    const right = await password.boundingBox();
-    expect(left && right && right.x >= left.x + left.width - 1 && Math.abs(right.y - left.y) < 3).toBeTruthy();
+    await expect(page.getByRole('link', { name: 'Consents' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Security' }).click();
+    await expect(page).toHaveURL(/\/profile\?tab=security$/);
+    await expect(password).toBeVisible();
+    await expect(details).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect.poll(async () => {
-      const a = await details.boundingBox();
-      const b = await password.boundingBox();
-      return Boolean(a && b && b.y >= a.y + a.height - 1);
-    }).toBe(true);
+    await expect(password).toBeVisible();
+    await page.getByRole('link', { name: 'Personal information' }).click();
+    await expect(details).toBeVisible();
+    await expect(page.locator('[data-app-shell]')).toHaveAttribute('data-shell-test', 'persistent');
   });
 }
