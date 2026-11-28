@@ -56,4 +56,26 @@ final readonly class InactiveUsers
             'verified' => $row['email_verified_at'] !== null,
         ], $query->executeQuery()->fetchAllAssociative());
     }
+
+    /** Inspect even recently active accounts; never confuse an ineligible scan row with absence. */
+    public function inspect(int $id, bool $lock, callable $inspect): void
+    {
+        if ($id < 1) throw new \InvalidArgumentException('Invalid account ID.');
+        $read = function () use ($id, $lock, $inspect): void {
+            $sql = 'SELECT id, email, language, created_at, last_login, anonymized_at FROM symsvel_users WHERE id = ?';
+            if ($lock) {
+                if ($this->db->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SQLitePlatform) {
+                    $this->db->executeStatement('UPDATE symsvel_users SET id = id WHERE id = ?', [$id]);
+                } else {
+                    $sql .= ' FOR UPDATE';
+                }
+            }
+            $row = $this->db->fetchAssociative($sql, [$id]);
+            $inspect($row === false || $row['anonymized_at'] !== null ? null : [
+                'id' => (int) $row['id'], 'email' => $row['email'], 'language' => $row['language'],
+                'activity' => new \DateTimeImmutable($row['last_login'] ?? $row['created_at'], new \DateTimeZone('UTC')),
+            ]);
+        };
+        if ($lock) $this->db->transactional($read); else $read();
+    }
 }

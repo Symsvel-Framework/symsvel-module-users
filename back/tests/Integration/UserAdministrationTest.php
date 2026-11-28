@@ -314,9 +314,19 @@ final class UserAdministrationTest extends TestCase
         }
         self::assertSame('owner@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = ?', [$id]));
         self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM custom_security'));
+        $owner->inspect($id, false, static function ($candidate) use ($db, $id, $old): void {
+            self::assertFalse($db->isTransactionActive());
+            self::assertSame($id, $candidate->id);
+            self::assertEquals($old, $candidate->activity);
+        });
+        $owner->inspect($id, true, static function ($candidate) use ($db, $id): void {
+            self::assertTrue($db->isTransactionActive());
+            self::assertSame($id, $candidate->id);
+        });
         $contributor->fail = false;
         self::assertTrue($owner->treat($candidates[0], 'anonymize', $now, static fn () => true));
         self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM custom_security'));
         self::assertSame([], $owner->batch(0, $owner->maximumId(), $now->modify('-12 months'), $now, 1));
+        $owner->inspect($id, true, static fn ($candidate) => self::assertNull($candidate));
     }
 }

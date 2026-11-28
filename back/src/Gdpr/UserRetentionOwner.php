@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace SymSvel\Module\Users\Gdpr;
 
 use SymSvel\Module\Gdpr\Retention\AccountRetentionOwner;
+use SymSvel\Module\Gdpr\Retention\AccountRetentionInspector;
 use SymSvel\Module\Gdpr\Retention\InactivityCandidate;
 use SymSvel\Module\Users\Service\InactiveUsers;
 use SymSvel\Module\Users\Service\UserAnonymization;
 
 /** Native identity adapter, only registered when the GDPR contract exists. */
-final readonly class UserRetentionOwner implements AccountRetentionOwner
+final readonly class UserRetentionOwner implements AccountRetentionOwner, AccountRetentionInspector
 {
     public function __construct(private InactiveUsers $users, private UserAnonymization $identity)
     {
@@ -26,6 +27,15 @@ final readonly class UserRetentionOwner implements AccountRetentionOwner
         return array_map(static fn (array $row): InactivityCandidate => new InactivityCandidate(
             $row['id'], $row['email'], $row['language'], $row['activity'],
         ), $this->users->batch($afterId, $maximumId, $before, $now, $limit));
+    }
+
+    public function inspect(int $userId, bool $lock, callable $inspect): void
+    {
+        $this->users->inspect($userId, $lock, static function (?array $row) use ($inspect): void {
+            $inspect($row === null ? null : new InactivityCandidate(
+                $row['id'], $row['email'], $row['language'], $row['activity'],
+            ));
+        });
     }
 
     public function treat(InactivityCandidate $candidate, string $mode, \DateTimeImmutable $now, callable $authorize): bool
