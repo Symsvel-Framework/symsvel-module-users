@@ -498,3 +498,5 @@ Le domaine réservé example.invalid ne peut plus être utilisé lors d'une cré
 ## Raccordement natif à GDPR
 
 `UserRetentionOwner` adapte les candidats et les opérations de neutralisation/suppression au contrat optionnel `AccountRetentionOwner`. Le bundle enregistre le service uniquement si le contrat GDPR est disponible. Le package GDPR est une dépendance de test sur la branche de travail, pas une dépendance runtime Users. Users reste propriétaire de son identité ; Auth possède ses données de sécurité et ses contributeurs (dont 2FA). Le verrou `lockActive` relit l'identité persistée dans la transaction de connexion, avant émission de session ou création/consommation de challenge. Les opérations d'effacement restent soumises au callback du coordinateur et à la même transaction. Tests d'intégration : sélection bornée, neutralisation, rollback d'un contributeur, garde d'identité et enregistrement conditionnel. Aucun accès GDPR direct aux tables Users ou Auth.
+
+La branche dev déclare aussi Settings `dev-dev` explicitement, requis par le contrat GDPR testé. La politique de stabilité Composer reste inchangée.
