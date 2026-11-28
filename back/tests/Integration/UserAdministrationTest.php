@@ -17,6 +17,9 @@ use SymSvel\Module\Users\Service\UserAnonymization;
 use SymSvel\Module\Users\Service\InactiveUsers;
 use SymSvel\Module\Auth\Token\DbalTokenStore;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
+use SymSvel\Module\Auth\Token\AppPrincipalSecurityData;
+use SymSvel\Module\Auth\Token\AppPrincipalSecurityContributor;
+use SymSvel\Module\Users\Gdpr\UserRetentionOwner;
 use SymSvel\Module\Users\Service\UserAdministration;
 
 final class UserAdministrationTest extends TestCase
@@ -125,7 +128,7 @@ final class UserAdministrationTest extends TestCase
         $activity = new \DateTimeImmutable('2025-01-01T00:00:00Z');
         $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
         $id = $users->create('person@example.test', 'correct-password-123', $activity, 'fr');
-        $neutralizer = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)));
+        $neutralizer = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)), new AppPrincipalSecurityData($db));
         try {
             $neutralizer->anonymize($id, 'person@example.test', $activity, $now, static fn () => false);
             self::fail('Unauthorized neutralization accepted.');
@@ -157,7 +160,7 @@ final class UserAdministrationTest extends TestCase
         $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
         $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
         $id = $users->invite('delete@example.test', $old);
-        $owner = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)));
+        $owner = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)), new AppPrincipalSecurityData($db));
         $calls = 0;
         $approval = static function () use (&$calls): bool { ++$calls; return true; };
         $db->insert('symsvel_auth_refresh_tokens', [
@@ -201,7 +204,7 @@ final class UserAdministrationTest extends TestCase
         $id = $users->invite('retained@example.test', $old);
         $db->insert('retained_document', ['id' => 1, 'user_id' => $id]);
         $db->insert('removable_profile', ['user_id' => $id]);
-        $owner = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)));
+        $owner = new UserAnonymization($db, new TokenSessionRevoker(new DbalTokenStore($db)), new AppPrincipalSecurityData($db));
         try {
             $owner->deleteInactive($id, 'retained@example.test', $old, $now, static function () use ($db, $id): bool {
                 $db->delete('removable_profile', ['user_id' => $id]);
@@ -277,5 +280,43 @@ final class UserAdministrationTest extends TestCase
         }
         $this->expectException(\DomainException::class);
         $users->update(999, null, true);
+    }
+
+    public function testNativeRetentionAdapterKeepsOwnershipAndRollsBackSecurityContributor(): void
+    {
+        [$users, $db] = $this->fixture();
+        $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $id = $users->invite('owner@example.test', $old);
+        $db->executeStatement('CREATE TABLE custom_security (principal_id INT PRIMARY KEY)');
+        $db->insert('custom_security', ['principal_id' => $id]);
+        $contributor = new class($db) implements AppPrincipalSecurityContributor {
+            public bool $fail = true;
+            public function __construct(private Connection $db) {}
+            public function moduleId(): string { return 'fixture'; }
+            public function eraseAppPrincipal(int $userId): void
+            {
+                $this->db->delete('custom_security', ['principal_id' => $userId]);
+                if ($this->fail) throw new \RuntimeException('Contributor veto.');
+            }
+        };
+        $owner = new UserRetentionOwner(new InactiveUsers($db), new UserAnonymization(
+            $db, new TokenSessionRevoker(new DbalTokenStore($db)), new AppPrincipalSecurityData($db, [$contributor]),
+        ));
+        $candidates = $owner->batch(0, $owner->maximumId(), $now->modify('-12 months'), $now, 1);
+        self::assertCount(1, $candidates);
+        self::assertSame($id, $candidates[0]->id);
+        try {
+            $owner->treat($candidates[0], 'anonymize', $now, static fn () => true);
+            self::fail('Contributor failure did not veto retention.');
+        } catch (\RuntimeException $e) {
+            self::assertSame('Contributor veto.', $e->getMessage());
+        }
+        self::assertSame('owner@example.test', $db->fetchOne('SELECT email FROM symsvel_users WHERE id = ?', [$id]));
+        self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM custom_security'));
+        $contributor->fail = false;
+        self::assertTrue($owner->treat($candidates[0], 'anonymize', $now, static fn () => true));
+        self::assertSame(0, (int) $db->fetchOne('SELECT COUNT(*) FROM custom_security'));
+        self::assertSame([], $owner->batch(0, $owner->maximumId(), $now->modify('-12 months'), $now, 1));
     }
 }

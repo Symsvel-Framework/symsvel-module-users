@@ -8,12 +8,13 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
+use SymSvel\Module\Auth\Token\AppPrincipalSecurityData;
 use SymSvel\Module\Auth\Token\TokenSubject;
 
 /** Internal identity-owner operation; never expose directly as a controller or cron. */
 final readonly class UserAnonymization
 {
-    public function __construct(private Connection $db, private TokenSessionRevoker $sessions)
+    public function __construct(private Connection $db, private TokenSessionRevoker $sessions, private AppPrincipalSecurityData $security)
     {
     }
 
@@ -56,14 +57,8 @@ final readonly class UserAnonymization
                 throw new \DomainException('User no longer eligible for anonymization.');
             }
             // A live session blocks inactivity treatment even if last_login is old.
-            foreach (['access', 'refresh'] as $kind) {
-                $sql = 'SELECT COUNT(*) FROM symsvel_auth_'.$kind.'_tokens WHERE context = ? AND principal_id = ? AND revoked_at IS NULL AND expires_at > ?';
-                if ($kind === 'refresh') {
-                    $sql .= ' AND used_at IS NULL';
-                }
-                if ((int) $this->db->fetchOne($sql, ['app', $id, $now->setTimezone($utc)->format('Y-m-d H:i:s.u')]) > 0) {
-                    throw new \DomainException('User has an active session.');
-                }
+            if ($this->security->hasActiveSession($id, $now)) {
+                throw new \DomainException('User has an active session.');
             }
             if ($authorize() !== true) {
                 throw new \DomainException('Account treatment not authorized by the retention coordinator.');
@@ -81,10 +76,7 @@ final readonly class UserAnonymization
                     throw new \DomainException('User changed concurrently.');
                 }
             }
-            foreach (['symsvel_auth_email_verification_tokens', 'symsvel_auth_password_reset_tokens', 'symsvel_auth_profile_email_changes', 'symsvel_auth_access_tokens', 'symsvel_auth_refresh_tokens'] as $table) {
-                $this->db->delete($table, ['context' => 'app', 'principal_id' => $id]);
-            }
-            $this->db->delete('symsvel_auth_app_invitations', ['principal_id' => $id]);
+            $this->security->erase($id);
             if ($delete && $this->db->executeStatement('DELETE FROM symsvel_users WHERE id = ? AND anonymized_at IS NULL', [$id]) !== 1) {
                 throw new \DomainException('User changed concurrently.');
             }

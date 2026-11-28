@@ -49,6 +49,18 @@ final class UserIdentityProviderDatabaseTest extends TestCase
             self::assertTrue($provider->isActive(new TokenSubject('app', $id)));
             self::assertFalse($provider->isActive(new TokenSubject('bo', $id)));
 
+            $subject = new TokenSubject('app', $id);
+            $connection->transactional(function () use ($provider, $subject): void {
+                self::assertTrue($provider->lockActive($subject));
+                self::assertFalse($provider->lockActive(new TokenSubject('bo', $subject->id)));
+            });
+            // The identity map may still contain an enabled user. The guard
+            // must consult the locked persisted row rather than that snapshot.
+            $connection->executeStatement('UPDATE symsvel_users SET enabled = 0 WHERE id = ?', [$id]);
+            $connection->transactional(function () use ($provider, $subject): void {
+                self::assertFalse($provider->lockActive($subject));
+            });
+
             $stored = $em->find(User::class, $id);
             self::assertNotNull($stored);
             $em->remove($stored);
