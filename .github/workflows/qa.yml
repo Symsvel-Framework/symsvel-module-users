@@ -97,6 +97,27 @@ jobs:
           npm run test:unit -- --run
           npx playwright test src/routes/registration.e2e.ts src/routes/profile.e2e.ts
 
+      - name: Checkout GDPR on dev for real profile integration
+        uses: actions/checkout@v4
+        with:
+          repository: Symsvel-Framework/symsvel-module-gdpr
+          ref: dev
+          path: gdpr
+      - name: Assemble GDPR and test shared profile consent
+        working-directory: assembled-app
+        run: |
+          mkdir -p src/lib/modules/gdpr src/lib/translations/gdpr
+          cp ../gdpr/app/src/lib/modules/gdpr/*.ts src/lib/modules/gdpr/
+          cp ../gdpr/app/src/lib/modules/gdpr/*.svelte src/lib/modules/gdpr/
+          cp ../gdpr/app/src/lib/translations/*.ts src/lib/translations/gdpr/
+          mkdir -p src/lib/modules/gdpr/routes/privacy src/routes/privacy
+          cp ../gdpr/app/src/routes/privacy/+page.svelte src/lib/modules/gdpr/routes/privacy/+page.svelte
+          printf '<script lang="ts">\n  import ModulePage from "#lib/modules/gdpr/routes/privacy/+page.svelte";\n</script>\n<ModulePage />\n' > src/routes/privacy/+page.svelte
+          cp ../app/tests/profile-consents.e2e.ts src/routes/
+          npm run format
+          npm run check
+          npm run lint
+          npx playwright test src/routes/profile-consents.e2e.ts
   bo-integration:
     runs-on: ubuntu-24.04
     steps:
