@@ -14,6 +14,7 @@ use SymSvel\Module\Auth\Schema\EmailVerificationSchema;
 use SymSvel\Module\Auth\Schema\PasswordResetSchema;
 use SymSvel\Module\Auth\Schema\ProfileEmailChangeSchema;
 use SymSvel\Module\Users\Service\UserAnonymization;
+use SymSvel\Module\Users\Service\InactiveUsers;
 use SymSvel\Module\Auth\Token\DbalTokenStore;
 use SymSvel\Module\Auth\Token\TokenSessionRevoker;
 use SymSvel\Module\Users\Service\UserAdministration;
@@ -148,6 +149,40 @@ final class UserAdministrationTest extends TestCase
         }
         self::assertNull($users->pendingInvitationEmail($id));
         self::assertSame(1, (int) $db->fetchOne('SELECT COUNT(*) FROM symsvel_users'));
+    }
+
+    public function testInactivityScanUsesLastLoginOrCreationAndExcludesLiveSessionsAndNeutralizedAccounts(): void
+    {
+        [$users, $db] = $this->fixture();
+        $old = new \DateTimeImmutable('2025-01-01T00:00:00Z');
+        $now = new \DateTimeImmutable('2026-11-28T10:00:00Z');
+        $never = $users->invite('never@example.test', $old);
+        $recent = $users->invite('recent@example.test', $old);
+        $inactive = $users->invite('inactive@example.test', $old);
+        $active = $users->invite('active@example.test', $old);
+        $neutral = $users->invite('neutral@example.test', $old);
+        $db->update('symsvel_users', ['last_login' => '2026-11-27 10:00:00'], ['id' => $recent]);
+        $db->update('symsvel_users', ['last_login' => '2025-06-01 10:00:00', 'email_verified_at' => '2025-01-01 10:00:00'], ['id' => $inactive]);
+        $db->update('symsvel_users', ['anonymized_at' => '2026-11-01 10:00:00'], ['id' => $neutral]);
+        $db->insert('symsvel_auth_refresh_tokens', [
+            'context' => 'app', 'principal_id' => $active, 'family_id' => str_repeat('a', 32),
+            'token_hash' => str_repeat('b', 64), 'created_at' => '2026-11-27 10:00:00',
+            'expires_at' => '2026-12-01 10:00:00',
+        ]);
+        $scan = new InactiveUsers($db);
+        $maximum = $scan->maximumId();
+        $late = $users->invite('late@example.test', $old);
+        self::assertGreaterThan($maximum, $late);
+        $before = $now->modify('-11 months');
+        $first = $scan->batch(0, $maximum, $before, $now, 1);
+        self::assertSame([$never], array_column($first, 'id'));
+        self::assertEquals($old, $first[0]['activity']);
+        self::assertFalse($first[0]['verified']);
+        $second = $scan->batch($never, $maximum, $before, $now, 100);
+        self::assertSame([$inactive], array_column($second, 'id'));
+        self::assertEquals(new \DateTimeImmutable('2025-06-01T10:00:00Z'), $second[0]['activity']);
+        self::assertTrue($second[0]['verified']);
+        self::assertSame([], $scan->batch($inactive, $maximum, $before, $now));
     }
 
     public function testInvalidPasswordAndUnknownUserAreRejected(): void

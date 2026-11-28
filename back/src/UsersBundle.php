@@ -14,6 +14,7 @@ use SymSvel\Module\Users\Controller\UserRegistrationController;
 use SymSvel\Module\Users\Controller\BoUsersController;
 use SymSvel\Module\Users\Controller\UserProfileController;
 use SymSvel\Module\Users\Service\UserAdministration;
+use SymSvel\Module\Users\Service\InactiveUsers;
 use SymSvel\Module\Users\Service\UserRegistration;
 use SymSvel\Module\Users\Auth\UserIdentityProvider;
 use SymSvel\Module\Users\Auth\UserLastLoginListener;
@@ -39,6 +40,7 @@ final class UsersBundle extends AbstractBundle
             ->setAutowired(true)
             ->setArgument('$connection', new Reference('doctrine.dbal.default_connection'));
         $builder->register(UserAdministration::class, UserAdministration::class)->setAutowired(true);
+        $builder->register(InactiveUsers::class)->setAutowired(true);
         $builder->register(UserProfileController::class, UserProfileController::class)
             ->setAutowired(true)->addTag('controller.service_arguments');
         $builder->register(BoUsersController::class, BoUsersController::class)
