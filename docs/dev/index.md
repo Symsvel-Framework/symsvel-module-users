@@ -502,3 +502,5 @@ Le domaine réservé example.invalid ne peut plus être utilisé lors d'une cré
 La branche dev déclare aussi Settings `dev-dev` explicitement, requis par le contrat GDPR testé. La politique de stabilité Composer reste inchangée.
 
 Le propriétaire expose aussi `AccountRetentionInspector` pour le nettoyage des préavis : consultation de l'identité même si elle est récemment active, null uniquement si absente ou neutralisée. Le mode verrouillé garde la transaction de lecture jusqu'à la fin du callback GDPR ; le dry-run ne verrouille ni ne modifie les lignes. Tests de présence, transaction et neutralisation.
+
+Le contrat GDPR testé par Users est désormais celui de la branche `dev-dev` intégrée. Aucun lien runtime Composer supplémentaire n'est créé.
